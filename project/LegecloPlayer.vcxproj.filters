@@ -1,0 +1,151 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{071a7328-d4a2-47cc-9c56-fc996f7f623f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\native-ui">
+      <UniqueIdentifier>{d3478517-7807-4941-8c2c-a5f082ddd5f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\native-ui">
+      <UniqueIdentifier>{2e670de5-09e4-4f25-8385-237517cd851c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\legeclo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\d2_image_drawer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\d2_text_writer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\main_window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mf_media_player.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mf_video_transferor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\view_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win_dialogue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win_filesystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win_image.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win_text.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win_timer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\native-ui\media_setting_dialogue.cpp">
+      <Filter>Source Files\native-ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\native-ui\window_menu.cpp">
+      <Filter>Source Files\native-ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\native-ui\dialogue_controls.cpp">
+      <Filter>Source Files\native-ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\native-ui\dialogue_template.cpp">
+      <Filter>Source Files\native-ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\native-ui\font_setting_dialogue.cpp">
+      <Filter>Source Files\native-ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win_font.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\adv.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\legeclo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\d2_image_drawer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\d2_text_writer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\main_window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\mf_media_player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\mf_video_transferor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\view_manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win_dialogue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win_filesystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win_text.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win_timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\native-ui\media_setting_dialogue.h">
+      <Filter>Header Files\native-ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\native-ui\window_menu.h">
+      <Filter>Header Files\native-ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\native-ui\dialogue_controls.h">
+      <Filter>Header Files\native-ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\native-ui\dialogue_template.h">
+      <Filter>Header Files\native-ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\native-ui\font_setting_dialogue.h">
+      <Filter>Header Files\native-ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win_font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="dpiAwareness.manifest">
+      <Filter>Resource Files</Filter>
+    </Manifest>
+  </ItemGroup>
+</Project>
