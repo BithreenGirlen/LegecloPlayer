@@ -6,7 +6,7 @@
 
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include <map>
 
 #include "d2_image_drawer.h"
 #include "d2_text_writer.h"
@@ -24,8 +24,8 @@ public:
 	CMainWindow();
 	~CMainWindow();
 
-	bool Create(HINSTANCE hInstance);
-	int MessageLoop();
+	bool create(HINSTANCE hInstance);
+	int messageLoop();
 
 	HWND GetHwnd()const { return m_hWnd;}
 private:
@@ -35,22 +35,22 @@ private:
 	HWND m_hWnd = nullptr;
 
 	static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	LRESULT HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	LRESULT OnCreate(HWND hWnd);
-	LRESULT OnDestroy();
-	LRESULT OnClose();
-	LRESULT OnPaint();
-	LRESULT OnSize();
-	LRESULT OnKeyDown(WPARAM wParam, LPARAM lParam);
-	LRESULT OnKeyUp(WPARAM wParam, LPARAM lParam);
-	LRESULT OnCommand(WPARAM wParam, LPARAM lParam);
-	LRESULT OnTimer(WPARAM wParam);
-	LRESULT OnMouseMove(WPARAM wParam, LPARAM lParam);
-	LRESULT OnMouseWheel(WPARAM wParam, LPARAM lParam);
-	LRESULT OnLButtonDown(WPARAM wParam, LPARAM lParam);
-	LRESULT OnLButtonUp(WPARAM wParam, LPARAM lParam);
-	LRESULT OnRButtonUp(WPARAM wParam, LPARAM lParam);
-	LRESULT OnMButtonUp(WPARAM wParam, LPARAM lParam);
+	LRESULT handleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	LRESULT onCreate(HWND hWnd);
+	LRESULT onDestroy();
+	LRESULT onClose();
+	LRESULT onPaint();
+	LRESULT onSize();
+	LRESULT onKeyDown(WPARAM wParam, LPARAM lParam);
+	LRESULT onKeyUp(WPARAM wParam, LPARAM lParam);
+	LRESULT onCommand(WPARAM wParam, LPARAM lParam);
+	LRESULT onTimer(WPARAM wParam);
+	LRESULT onMouseMove(WPARAM wParam, LPARAM lParam);
+	LRESULT onMouseWheel(WPARAM wParam, LPARAM lParam);
+	LRESULT onLButtonDown(WPARAM wParam, LPARAM lParam);
+	LRESULT onLButtonUp(WPARAM wParam, LPARAM lParam);
+	LRESULT onRButtonUp(WPARAM wParam, LPARAM lParam);
+	LRESULT onMButtonUp(WPARAM wParam, LPARAM lParam);
 
 	struct Menu
 	{
@@ -68,7 +68,7 @@ private:
 	POINT m_lastCursorPos{};
 	bool m_wasLeftPressed = false;
 	bool m_hasLeftBeenDragged = false;
-	bool m_wasRightCombinated = false;
+	bool m_wasRightCombined = false;
 
 	HMENU m_hMenuBar = nullptr;
 	bool m_isFramelessWindow = false;
@@ -76,27 +76,27 @@ private:
 	std::vector<std::wstring> m_scriptFilePaths;
 	size_t m_nScriptFilePathIndex = 0;
 
-	void InitialiseMenuBar();
+	void initialiseMenuBar();
 
-	void MenuOnOpenFile();
-	void MenuOnNextFile();
-	void MenuOnForeFile();
+	void menuOnOpenFile();
+	void menuOnNextFile();
+	void menuOnForeFile();
 
-	void MenuOnAudioSetting();
-	void MenuOnVideoSetting();
-	void MenuOnFontSetting();
+	void menuOnAudioSetting();
+	void menuOnVideoSetting();
+	void menuOnFontSetting();
 
-	void MenuOnPauseVideo();
-	void MenuOnSyncImage();
+	void menuOnPauseVideo();
+	void menuOnSyncImage();
 
-	void ChangeWindowTitle(const wchar_t* pzTitle);
-	void ToggleWindowFrameStyle();
-	void UpdateMenuItemState() const;
+	void changeWindowTitle(const wchar_t* pzTitle);
+	void toggleWindowFrameStyle();
+	void updateMenuItemState() const;
 
-	bool SetupScenario(const wchar_t* scriptFilePath);
-	void ClearScenarioData();
+	bool setupScenario(const wchar_t* scriptFilePath);
+	void clearScenarioData();
 
-	void UpdateScreen() const;
+	void updateScreen() const;
 
 	CD2ImageDrawer* m_pD2ImageDrawer = nullptr;
 	CD2TextWriter* m_pD2TextWriter = nullptr;
@@ -120,31 +120,31 @@ private:
 	bool m_isTextHidden = false;
 	bool m_isImageSynced = true;
 
-	bool IsPlayReady() const;
+	bool isPlayReady() const;
 
-	void ShiftPaintData();
-	void UpdatePaintData();
+	void shiftPaintData();
+	void updatePaintData();
 
-	void ShiftScene(bool forward);
-	void UpdateScene();
+	void shiftScene(bool forward);
+	void updateScene();
 
-	void UpdateText();
-	void AutoTexting();
+	void updateText();
+	void autoTexting();
 
-	const adv::PaintDatum* GetCurrentPaintData();
-	std::wstring FormatCurrentText();
+	const adv::PaintDatum* getCurrentPaintData();
+	std::wstring formatCurrentText();
 
-	std::unordered_map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
-	void StoreVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> pD2D1Bitmap);
-	void ClearStoeredVideoFrame();
-	ID2D1Bitmap* RestoreVideoFrame(long long llCurrentTime);
+	std::map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
+	void storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> pD2D1Bitmap);
+	void clearStoeredVideoFrame();
+	ID2D1Bitmap* restoreVideoFrame(long long llCurrentTime);
 
-	std::unordered_map<std::wstring, CComPtr<ID2D1Bitmap>> m_imageMap;
-	void CreateImageMap();
-	void ClearImageMap();
+	std::map<std::wstring, CComPtr<ID2D1Bitmap>> m_imageMap;
+	void createImageMap();
+	void clearImageMap();
 
-	void OnAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
-	void OnVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
+	void onAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
+	void onVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
 
 	CWinTimer m_videoTimer;
 };

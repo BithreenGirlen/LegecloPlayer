@@ -23,7 +23,7 @@ CMainWindow::~CMainWindow()
 
 }
 
-bool CMainWindow::Create(HINSTANCE hInstance)
+bool CMainWindow::create(HINSTANCE hInstance)
 {
 	WNDCLASSEXW wcex{};
 
@@ -53,7 +53,7 @@ bool CMainWindow::Create(HINSTANCE hInstance)
 	return m_hWnd != nullptr;
 }
 
-int CMainWindow::MessageLoop()
+int CMainWindow::messageLoop()
 {
 	MSG msg;
 
@@ -92,51 +92,51 @@ LRESULT CMainWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	pThis = reinterpret_cast<CMainWindow*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
 	if (pThis != nullptr)
 	{
-		return pThis->HandleMessage(hWnd, uMsg, wParam, lParam);
+		return pThis->handleMessage(hWnd, uMsg, wParam, lParam);
 	}
 
 	return ::DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 /*メッセージ処理*/
-LRESULT CMainWindow::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::handleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
 	case WM_CREATE:
-		return OnCreate(hWnd);
+		return onCreate(hWnd);
 	case WM_DESTROY:
-		return OnDestroy();
+		return onDestroy();
 	case WM_CLOSE:
-		return OnClose();
+		return onClose();
 	case WM_PAINT:
-		return OnPaint();
+		return onPaint();
 	case WM_ERASEBKGND:
 		return 1;
 	case WM_KEYDOWN:
-		return OnKeyDown(wParam, lParam);
+		return onKeyDown(wParam, lParam);
 	case WM_KEYUP:
-		return OnKeyUp(wParam, lParam);
+		return onKeyUp(wParam, lParam);
 	case WM_COMMAND:
-		return OnCommand(wParam, lParam);
+		return onCommand(wParam, lParam);
 	case WM_TIMER:
-		return OnTimer(wParam);
+		return onTimer(wParam);
 	case WM_MOUSEMOVE:
-		return OnMouseMove(wParam, lParam);
+		return onMouseMove(wParam, lParam);
 	case WM_MOUSEWHEEL:
-		return OnMouseWheel(wParam, lParam);
+		return onMouseWheel(wParam, lParam);
 	case WM_LBUTTONDOWN:
-		return OnLButtonDown(wParam, lParam);
+		return onLButtonDown(wParam, lParam);
 	case WM_LBUTTONUP:
-		return OnLButtonUp(wParam, lParam);
+		return onLButtonUp(wParam, lParam);
 	case WM_RBUTTONUP:
-		return OnRButtonUp(wParam, lParam);
+		return onRButtonUp(wParam, lParam);
 	case WM_MBUTTONUP:
-		return OnMButtonUp(wParam, lParam);
+		return onMButtonUp(wParam, lParam);
 	case EventMessage::kAudioPlayer:
-		OnAudioPlayerEvent(static_cast<unsigned long>(lParam), wParam);
+		onAudioPlayerEvent(static_cast<unsigned long>(lParam), wParam);
 		break;
 	case EventMessage::kVideoPlayer:
-		OnVideoPlayerEvent(static_cast<unsigned long>(lParam), wParam);
+		onVideoPlayerEvent(static_cast<unsigned long>(lParam), wParam);
 		break;
 	default:
 
@@ -146,43 +146,53 @@ LRESULT CMainWindow::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 	return ::DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 /*WM_CREATE*/
-LRESULT CMainWindow::OnCreate(HWND hWnd)
+LRESULT CMainWindow::onCreate(HWND hWnd)
 {
 	m_hWnd = hWnd;
 
-	InitialiseMenuBar();
-	UpdateMenuItemState();
+	initialiseMenuBar();
+	updateMenuItemState();
 	window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kSyncImage, m_isImageSynced);
 
-	m_videoTimer.SetCallback(std::bind(&CMainWindow::UpdateScreen, this));
+	const auto TimerCallback = [](void* pUserData)
+		-> void
+		{
+			CMainWindow* pThis = static_cast<CMainWindow*>(pUserData);
+			if (pThis != nullptr)
+			{
+				pThis->updateScreen();
+			}
+		};
+
+	m_videoTimer.setCallback(TimerCallback, this);
 
 	m_pD2ImageDrawer = new CD2ImageDrawer(m_hWnd);
 
 	m_pAudioPlayer = new CMfMediaPlayer();
-	m_pAudioPlayer->SetPlaybackWindow(m_hWnd, EventMessage::kAudioPlayer);
+	m_pAudioPlayer->setPlaybackWindow(m_hWnd, EventMessage::kAudioPlayer);
 
 	m_pVideoTransferor = new CMfVideoTransferor();
-	m_pVideoTransferor->SetPlaybackWindow(m_hWnd, EventMessage::kVideoPlayer);
-	m_pVideoTransferor->SetLoop(true);
+	m_pVideoTransferor->setPlaybackWindow(m_hWnd, EventMessage::kVideoPlayer);
+	m_pVideoTransferor->setLoop(true);
 
-	m_pD2TextWriter = new CD2TextWriter(m_pD2ImageDrawer->GetD2Factory(), m_pD2ImageDrawer->GetD2DeviceContext());
-	m_pD2TextWriter->SetupOutLinedDrawing(L"C:\\Windows\\Fonts\\yumindb.ttf");
+	m_pD2TextWriter = new CD2TextWriter(m_pD2ImageDrawer->getD2Factory(), m_pD2ImageDrawer->getD2DeviceContext());
+	m_pD2TextWriter->setupOutLinedDrawing(L"C:\\Windows\\Fonts\\yumindb.ttf");
 
 	m_pViewManager = new CViewManager(m_hWnd);
 
 	return 0;
 }
 /*WM_DESTROY*/
-LRESULT CMainWindow::OnDestroy()
+LRESULT CMainWindow::onDestroy()
 {
 	::PostQuitMessage(0);
 
 	return 0;
 }
 /*WM_CLOSE*/
-LRESULT CMainWindow::OnClose()
+LRESULT CMainWindow::onClose()
 {
-	m_videoTimer.End();
+	m_videoTimer.end();
 
 	::KillTimer(m_hWnd, Timer::kText);
 
@@ -222,7 +232,7 @@ LRESULT CMainWindow::OnClose()
 	return 0;
 }
 /*WM_PAINT*/
-LRESULT CMainWindow::OnPaint()
+LRESULT CMainWindow::onPaint()
 {
 	PAINTSTRUCT ps;
 	HDC hdc = ::BeginPaint(m_hWnd, &ps);
@@ -234,32 +244,32 @@ LRESULT CMainWindow::OnPaint()
 		return 0;
 	}
 
-	m_pD2ImageDrawer->Clear();
+	m_pD2ImageDrawer->clear();
 
 	bool bRet = false;
-	const adv::PaintDatum* pPaintDatum = GetCurrentPaintData();
+	const adv::PaintDatum* pPaintDatum = getCurrentPaintData();
 	if (pPaintDatum != nullptr)
 	{
 		if (pPaintDatum->isVideo)
 		{
 			CComPtr<ID2D1Bitmap> d2d1Bitmap;
 			long long frameTime = 0;
-			bRet = m_pVideoTransferor->TransferVideoFrame(m_pD2ImageDrawer->GetD2DeviceContext(), &d2d1Bitmap, &frameTime);
+			bRet = m_pVideoTransferor->transferVideoFrame(m_pD2ImageDrawer->getD2DeviceContext(), &d2d1Bitmap, &frameTime);
 			if (bRet)
 			{
-				bRet = m_pD2ImageDrawer->Draw(d2d1Bitmap.p, { m_pViewManager->GetXOffset(), m_pViewManager->GetYOffset() }, m_pViewManager->GetScale());
+				bRet = m_pD2ImageDrawer->draw(d2d1Bitmap.p, { m_pViewManager->getOffsetX(), m_pViewManager->getOffsetY() }, m_pViewManager->getScale());
 				if (bRet)
 				{
-					StoreVideoFrame(frameTime, d2d1Bitmap);
+					storeVideoFrame(frameTime, d2d1Bitmap);
 				}
 			}
 			else
 			{
-				long long llCurrentTime = m_pVideoTransferor->GetCurrentTimeInMilliSeconds();
-				ID2D1Bitmap* p = RestoreVideoFrame(llCurrentTime);
+				long long llCurrentTime = m_pVideoTransferor->getCurrentTimeInMilliSeconds();
+				ID2D1Bitmap* p = restoreVideoFrame(llCurrentTime);
 				if (p != nullptr)
 				{
-					bRet = m_pD2ImageDrawer->Draw(p, { m_pViewManager->GetXOffset(), m_pViewManager->GetYOffset() }, m_pViewManager->GetScale());
+					bRet = m_pD2ImageDrawer->draw(p, { m_pViewManager->getOffsetX(), m_pViewManager->getOffsetY() }, m_pViewManager->getScale());
 				}
 			}
 		}
@@ -268,7 +278,7 @@ LRESULT CMainWindow::OnPaint()
 			const auto& iter = m_imageMap.find(pPaintDatum->wstrFilePath);
 			if (iter != m_imageMap.cend())
 			{
-				bRet = m_pD2ImageDrawer->Draw(iter->second.p, { m_pViewManager->GetXOffset(), m_pViewManager->GetYOffset() }, m_pViewManager->GetScale());
+				bRet = m_pD2ImageDrawer->draw(iter->second.p, { m_pViewManager->getOffsetX(), m_pViewManager->getOffsetY() }, m_pViewManager->getScale());
 			}
 		}
 	}
@@ -277,10 +287,10 @@ LRESULT CMainWindow::OnPaint()
 	{
 		if (!m_isTextHidden && m_pD2TextWriter != nullptr)
 		{
-			const std::wstring wstr = FormatCurrentText();
-			m_pD2TextWriter->OutLinedDraw(wstr.c_str(), static_cast<unsigned long>(wstr.size()));
+			const std::wstring wstr = formatCurrentText();
+			m_pD2TextWriter->outLinedDraw(wstr.c_str(), wstr.size());
 		}
-		m_pD2ImageDrawer->Display();
+		m_pD2ImageDrawer->display();
 	}
 
 	::EndPaint(m_hWnd, &ps);
@@ -288,21 +298,21 @@ LRESULT CMainWindow::OnPaint()
 	return 0;
 }
 /*WM_SIZE*/
-LRESULT CMainWindow::OnSize()
+LRESULT CMainWindow::onSize()
 {
 
 	return 0;
 }
 /*WM_KEYDOWN*/
-LRESULT CMainWindow::OnKeyDown(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onKeyDown(WPARAM wParam, LPARAM lParam)
 {
 	switch (wParam)
 	{
 	case VK_RIGHT:
-		AutoTexting();
+		autoTexting();
 		break;
 	case VK_LEFT:
-		ShiftScene(false);
+		shiftScene(false);
 		break;
 	default:
 
@@ -312,7 +322,7 @@ LRESULT CMainWindow::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 /*WM_KEYUP*/
-LRESULT CMainWindow::OnKeyUp(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onKeyUp(WPARAM wParam, LPARAM lParam)
 {
 	switch (wParam)
 	{
@@ -320,27 +330,27 @@ LRESULT CMainWindow::OnKeyUp(WPARAM wParam, LPARAM lParam)
 		::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
 		break;
 	case VK_UP:
-		MenuOnForeFile();
+		menuOnForeFile();
 		break;
 	case VK_DOWN:
-		MenuOnNextFile();
+		menuOnNextFile();
 		break;
 	case 'C':
 		if (m_pD2TextWriter != nullptr)
 		{
-			m_pD2TextWriter->SwitchTextColour();
-			UpdateScreen();
+			m_pD2TextWriter->toggleTextColour();
+			updateScreen();
 		}
 		break;
 	case 'T':
 		m_isTextHidden ^= true;
-		UpdateScreen();
+		updateScreen();
 		break;
 	}
 	return 0;
 }
 /*WM_COMMAND*/
-LRESULT CMainWindow::OnCommand(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onCommand(WPARAM wParam, LPARAM lParam)
 {
 	int wmId = LOWORD(wParam);
 	int wmKind = LOWORD(lParam);
@@ -350,28 +360,28 @@ LRESULT CMainWindow::OnCommand(WPARAM wParam, LPARAM lParam)
 		switch (wmId)
 		{
 		case Menu::kOpenFile:
-			MenuOnOpenFile();
+			menuOnOpenFile();
 			break;
 		case Menu::kNextFile:
-			MenuOnNextFile();
+			menuOnNextFile();
 			break;
 		case Menu::kForeFile:
-			MenuOnForeFile();
+			menuOnForeFile();
 			break;
 		case Menu::kAudioSetting:
-			MenuOnAudioSetting();
+			menuOnAudioSetting();
 			break;
 		case Menu::kVideoSetting:
-			MenuOnVideoSetting();
+			menuOnVideoSetting();
 			break;
 		case Menu::kFontSetting:
-			MenuOnFontSetting();
+			menuOnFontSetting();
 			break;
 		case Menu::kPauseVideo:
-			MenuOnPauseVideo();
+			menuOnPauseVideo();
 			break;
 		case Menu::kSyncImage:
-			MenuOnSyncImage();
+			menuOnSyncImage();
 			break;
 		default:
 
@@ -386,16 +396,16 @@ LRESULT CMainWindow::OnCommand(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 /*WM_TIMER*/
-LRESULT CMainWindow::OnTimer(WPARAM wParam)
+LRESULT CMainWindow::onTimer(WPARAM wParam)
 {
 	switch (wParam)
 	{
 	case Timer::kText:
 		if (m_pAudioPlayer != nullptr)
 		{
-			if (m_pAudioPlayer->IsEnded())
+			if (m_pAudioPlayer->isEnded())
 			{
-				AutoTexting();
+				autoTexting();
 			}
 		}
 		break;
@@ -405,7 +415,7 @@ LRESULT CMainWindow::OnTimer(WPARAM wParam)
 	return 0;
 }
 /* WM_MOUSEMOVE */
-LRESULT CMainWindow::OnMouseMove(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onMouseMove(WPARAM wParam, LPARAM lParam)
 {
 	WORD usKey = LOWORD(wParam);
 	if (usKey == MK_LBUTTON)
@@ -420,8 +430,8 @@ LRESULT CMainWindow::OnMouseMove(WPARAM wParam, LPARAM lParam)
 				int iX = m_lastCursorPos.x - pt.x;
 				int iY = m_lastCursorPos.y - pt.y;
 
-				m_pViewManager->SetOffset(iX, iY);
-				UpdateScreen();
+				m_pViewManager->setOffset(iX, iY);
+				updateScreen();
 			}
 		}
 
@@ -432,7 +442,7 @@ LRESULT CMainWindow::OnMouseMove(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 /*WM_MOUSEWHEEL*/
-LRESULT CMainWindow::OnMouseWheel(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onMouseWheel(WPARAM wParam, LPARAM lParam)
 {
 	short usDelta = static_cast<short>(HIWORD(wParam));
 	int iScroll = -usDelta / WHEEL_DELTA;
@@ -444,22 +454,22 @@ LRESULT CMainWindow::OnMouseWheel(WPARAM wParam, LPARAM lParam)
 	}
 	else if (usKey == MK_RBUTTON)
 	{
-		ShiftScene(iScroll > 0);
+		shiftScene(iScroll > 0);
 
-		m_wasRightCombinated = true;
+		m_wasRightCombined = true;
 	}
 	else
 	{
 		if (m_pViewManager != nullptr)
 		{
-			m_pViewManager->Rescale(iScroll > 0);
+			m_pViewManager->rescale(iScroll > 0);
 		}
 	}
 
 	return 0;
 }
 /*WM_LBUTTONDOWN*/
-LRESULT CMainWindow::OnLButtonDown(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onLButtonDown(WPARAM wParam, LPARAM lParam)
 {
 	::GetCursorPos(&m_lastCursorPos);
 
@@ -468,7 +478,7 @@ LRESULT CMainWindow::OnLButtonDown(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 /*WM_LBUTTONUP*/
-LRESULT CMainWindow::OnLButtonUp(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onLButtonUp(WPARAM wParam, LPARAM lParam)
 {
 	if (m_hasLeftBeenDragged)
 	{
@@ -488,7 +498,7 @@ LRESULT CMainWindow::OnLButtonUp(WPARAM wParam, LPARAM lParam)
 		input.ki.wVk = VK_DOWN;
 		::SendInput(1, &input, sizeof(input));
 
-		m_wasRightCombinated = true;
+		m_wasRightCombined = true;
 	}
 
 	if (usKey == 0 && m_wasLeftPressed)
@@ -500,13 +510,13 @@ LRESULT CMainWindow::OnLButtonUp(WPARAM wParam, LPARAM lParam)
 
 		if (iX == 0 && iY == 0)
 		{
-			if (m_pVideoTransferor->IsPaused())
+			if (m_pVideoTransferor->isPaused())
 			{
-				m_pVideoTransferor->FrameStep(true);
+				m_pVideoTransferor->frameStep(true);
 			}
 			else
 			{
-				ShiftPaintData();
+				shiftPaintData();
 			}
 		}
 	}
@@ -516,11 +526,11 @@ LRESULT CMainWindow::OnLButtonUp(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 /*WM_RBUTTONUP*/
-LRESULT CMainWindow::OnRButtonUp(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onRButtonUp(WPARAM wParam, LPARAM lParam)
 {
-	if (m_wasRightCombinated)
+	if (m_wasRightCombined)
 	{
-		m_wasRightCombinated = false;
+		m_wasRightCombined = false;
 
 		return 0;
 	}
@@ -529,7 +539,7 @@ LRESULT CMainWindow::OnRButtonUp(WPARAM wParam, LPARAM lParam)
 
 	if (usKey == 0)
 	{
-		if (IsPlayReady() && !m_labelData.empty())
+		if (isPlayReady() && !m_labelData.empty())
 		{
 			HMENU hPopupMenu = ::CreatePopupMenu();
 			if (hPopupMenu != nullptr)
@@ -546,7 +556,7 @@ LRESULT CMainWindow::OnRButtonUp(WPARAM wParam, LPARAM lParam)
 				{
 					size_t labelIndex = static_cast<size_t>(menuIndex - 1);
 					m_nSceneIndex = m_labelData[labelIndex].nSceneIndex;
-					UpdateScene();
+					updateScene();
 				}
 				::DestroyMenu(hPopupMenu);
 			}
@@ -556,28 +566,28 @@ LRESULT CMainWindow::OnRButtonUp(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 /*WM_MBUTTONUP*/
-LRESULT CMainWindow::OnMButtonUp(WPARAM wParam, LPARAM lParam)
+LRESULT CMainWindow::onMButtonUp(WPARAM wParam, LPARAM lParam)
 {
 	WORD usKey = LOWORD(wParam);
 	if (usKey == 0)
 	{
 		if (m_pViewManager != nullptr)
 		{
-			m_pViewManager->ResetZoom();
+			m_pViewManager->resetZoom();
 		}
 	}
 
 	if (usKey == MK_RBUTTON)
 	{
-		ToggleWindowFrameStyle();
+		toggleWindowFrameStyle();
 
-		m_wasRightCombinated = true;
+		m_wasRightCombined = true;
 	}
 
 	return 0;
 }
 /*操作欄作成*/
-void CMainWindow::InitialiseMenuBar()
+void CMainWindow::initialiseMenuBar()
 {
 	if (m_hMenuBar != nullptr)return;
 
@@ -589,14 +599,14 @@ void CMainWindow::InitialiseMenuBar()
 					{},
 					{Menu::kNextFile, L"Next"},
 					{Menu::kForeFile, L"Previous"}
-				}).Get()
+				}).get()
 			},
 			{0, L"Setting", window_menu::MenuBuilder(
 				{
 					{Menu::kAudioSetting, L"Audio"},
 					{Menu::kVideoSetting, L"Video"},
 					{Menu::kFontSetting, L"Font"}
-				}).Get()
+				}).get()
 			},
 			{0, L"Image", window_menu::MenuBuilder(
 				{
@@ -604,10 +614,10 @@ void CMainWindow::InitialiseMenuBar()
 						{Menu::kPauseVideo, L"Pause"},
 						{Menu::kSyncImage, L"Sync"}
 					}
-				}).Get()
+				}).get()
 			}
 		}
-	).Get();
+	).get();
 
 	if (::IsMenu(hMenu))
 	{
@@ -622,94 +632,94 @@ void CMainWindow::InitialiseMenuBar()
 	}
 }
 /*ファイル選択*/
-void CMainWindow::MenuOnOpenFile()
+void CMainWindow::menuOnOpenFile()
 {
 	constexpr wchar_t fileFilter[] = L"cs_*2.evsc;cs_*3.evsc";
 	std::wstring selectedFilePath = win_dialogue::SelectOpenFile(L"script file", fileFilter, L"Select EVSC script", m_hWnd);
 	if (!selectedFilePath.empty())
 	{
-		bool bRet = SetupScenario(selectedFilePath.c_str());
+		bool bRet = setupScenario(selectedFilePath.c_str());
 		if (bRet)
 		{
 			m_scriptFilePaths.clear();
 			m_nScriptFilePathIndex = 0;
-			win_filesystem::GetFilePathListAndIndex(selectedFilePath, fileFilter, m_scriptFilePaths, &m_nScriptFilePathIndex);
+			win_filesystem::GetFilePathListAndIndex(selectedFilePath, fileFilter, m_scriptFilePaths, m_nScriptFilePathIndex);
 		}
 	}
 }
 /*次ファイルに移動*/
-void CMainWindow::MenuOnNextFile()
+void CMainWindow::menuOnNextFile()
 {
 	if (m_scriptFilePaths.empty())return;
 
 	++m_nScriptFilePathIndex;
 	if (m_nScriptFilePathIndex >= m_scriptFilePaths.size())m_nScriptFilePathIndex = 0;
-	SetupScenario(m_scriptFilePaths[m_nScriptFilePathIndex].c_str());
+	setupScenario(m_scriptFilePaths[m_nScriptFilePathIndex].c_str());
 }
 /*前ファイルに移動*/
-void CMainWindow::MenuOnForeFile()
+void CMainWindow::menuOnForeFile()
 {
 	if (m_scriptFilePaths.empty())return;
 
 	--m_nScriptFilePathIndex;
 	if (m_nScriptFilePathIndex >= m_scriptFilePaths.size())m_nScriptFilePathIndex = m_scriptFilePaths.size() - 1;
-	SetupScenario(m_scriptFilePaths[m_nScriptFilePathIndex].c_str());
+	setupScenario(m_scriptFilePaths[m_nScriptFilePathIndex].c_str());
 }
 /*音声設定画面呼び出し*/
-void CMainWindow::MenuOnAudioSetting()
+void CMainWindow::menuOnAudioSetting()
 {
 	if (m_pAudioPlayer != nullptr)
 	{
 		CMediaSettingDialogue mediaSettingDialogue;
-		mediaSettingDialogue.Open(m_hInstance, m_hWnd, m_pAudioPlayer, L"Audio");
+		mediaSettingDialogue.open(m_hInstance, m_hWnd, m_pAudioPlayer, L"Audio");
 	}
 }
 /*動画設定画面呼び出し*/
-void CMainWindow::MenuOnVideoSetting()
+void CMainWindow::menuOnVideoSetting()
 {
 	if (m_pVideoTransferor != nullptr)
 	{
 		CMediaSettingDialogue mediaSettingDialogue;
-		mediaSettingDialogue.Open(m_hInstance, m_hWnd, m_pVideoTransferor, L"Video");
+		mediaSettingDialogue.open(m_hInstance, m_hWnd, m_pVideoTransferor, L"Video");
 	}
 }
 
-void CMainWindow::MenuOnFontSetting()
+void CMainWindow::menuOnFontSetting()
 {
-	if (m_fontSettingDiallogue.GetHwnd() == nullptr)
+	if (m_fontSettingDiallogue.getHwnd() == nullptr)
 	{
-		HWND hWnd = m_fontSettingDiallogue.Open(m_hInstance, m_hWnd, L"Font", m_pD2TextWriter);
+		HWND hWnd = m_fontSettingDiallogue.open(m_hInstance, m_hWnd, L"Font", m_pD2TextWriter);
 		::ShowWindow(hWnd, SW_SHOWNORMAL);
 	}
 	else
 	{
-		::SetFocus(m_fontSettingDiallogue.GetHwnd());
+		::SetFocus(m_fontSettingDiallogue.getHwnd());
 	}
 }
 /*動画一時停止*/
-void CMainWindow::MenuOnPauseVideo()
+void CMainWindow::menuOnPauseVideo()
 {
 	if (m_pVideoTransferor != nullptr)
 	{
-		bool toBePaused = !m_pVideoTransferor->IsPaused();
-		bool bRet = m_pVideoTransferor->SetPause(toBePaused);
+		bool toBePaused = !m_pVideoTransferor->isPaused();
+		bool bRet = m_pVideoTransferor->setPause(toBePaused);
 		if (bRet)
 		{
 			window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kPauseVideo, toBePaused);
 		}
 	}
 }
-void CMainWindow::MenuOnSyncImage()
+void CMainWindow::menuOnSyncImage()
 {
 	bool bRet = window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kSyncImage, !m_isImageSynced);
 	if (bRet)
 	{
 		m_isImageSynced ^= true;
-		UpdatePaintData();
+		updatePaintData();
 	}
 }
 /*標題変更*/
-void CMainWindow::ChangeWindowTitle(const wchar_t* pzTitle)
+void CMainWindow::changeWindowTitle(const wchar_t* pzTitle)
 {
 	const wchar_t* windowTitle = pzTitle;
 	if (windowTitle != nullptr)
@@ -725,9 +735,9 @@ void CMainWindow::ChangeWindowTitle(const wchar_t* pzTitle)
 	::SetWindowTextW(m_hWnd, windowTitle == nullptr ? m_defaultWindowName : windowTitle);
 }
 /*表示形式変更*/
-void CMainWindow::ToggleWindowFrameStyle()
+void CMainWindow::toggleWindowFrameStyle()
 {
-	if (!IsPlayReady())return;
+	if (!isPlayReady())return;
 
 	LONG lStyle = ::GetWindowLong(m_hWnd, GWL_STYLE);
 
@@ -750,25 +760,25 @@ void CMainWindow::ToggleWindowFrameStyle()
 
 	if (m_pViewManager != nullptr)
 	{
-		m_pViewManager->OnStyleChanged();
+		m_pViewManager->onStyleChanged();
 	}
 }
 
-void CMainWindow::UpdateMenuItemState() const
+void CMainWindow::updateMenuItemState() const
 {
 	constexpr unsigned int fileMenuIndices[] = { Menu::kNextFile, Menu::kForeFile };
-	bool toEnable = IsPlayReady();
+	bool toEnable = isPlayReady();
 
 	window_menu::EnableMenuItems(window_menu::GetMenuInBar(m_hWnd, MenuBar::kFile), fileMenuIndices, toEnable);
 }
 /*寸劇構築*/
-bool CMainWindow::SetupScenario(const wchar_t* scriptFilePath)
+bool CMainWindow::setupScenario(const wchar_t* scriptFilePath)
 {
 	if (scriptFilePath == nullptr)return false;
 
-	ClearScenarioData();
+	clearScenarioData();
 
-	bool hadBeenReady = IsPlayReady();
+	bool hadBeenReady = isPlayReady();
 	bool bRet = legeclo::LoadScenario(scriptFilePath, m_textData, m_paintData, m_sceneData, m_labelData);
 	if (!bRet)
 	{
@@ -776,18 +786,18 @@ bool CMainWindow::SetupScenario(const wchar_t* scriptFilePath)
 	}
 	else
 	{
-		CreateImageMap();
-		UpdateText();
-		UpdatePaintData();
+		createImageMap();
+		updateText();
+		updatePaintData();
 	}
 
-	ChangeWindowTitle(bRet ? scriptFilePath : nullptr);
-	if(hadBeenReady != bRet) UpdateMenuItemState();
+	changeWindowTitle(bRet ? scriptFilePath : nullptr);
+	if(hadBeenReady != bRet) updateMenuItemState();
 
 	return bRet;
 }
 /*寸劇情報消去*/
-void CMainWindow::ClearScenarioData()
+void CMainWindow::clearScenarioData()
 {
 	m_textData.clear();
 
@@ -800,25 +810,25 @@ void CMainWindow::ClearScenarioData()
 
 	m_labelData.clear();
 
-	ClearImageMap();
+	clearImageMap();
 
-	m_videoTimer.End();
-	ClearStoeredVideoFrame();
+	m_videoTimer.end();
+	clearStoeredVideoFrame();
 
 	m_hasFirstPaintDataBeenLoaded = false;
 }
 /*再描画要求*/
-void CMainWindow::UpdateScreen() const
+void CMainWindow::updateScreen() const
 {
 	::InvalidateRect(m_hWnd, nullptr, FALSE);
 }
 
-bool CMainWindow::IsPlayReady() const
+bool CMainWindow::isPlayReady() const
 {
 	return !m_textData.empty() && !m_paintData.empty();
 }
 /*表示図画送り・戻し*/
-void CMainWindow::ShiftPaintData()
+void CMainWindow::shiftPaintData()
 {
 	if (!m_isImageSynced)
 	{
@@ -826,27 +836,27 @@ void CMainWindow::ShiftPaintData()
 		if (m_nPaintIndex >= m_paintData.size())m_nPaintIndex = 0;
 	}
 
-	UpdatePaintData();
+	updatePaintData();
 }
 /*図画データ更新*/
-void CMainWindow::UpdatePaintData()
+void CMainWindow::updatePaintData()
 {
 	if (m_nPaintIndex >= m_paintData.size())return;
 
-	const adv::PaintDatum *pPaintDatum = GetCurrentPaintData();
+	const adv::PaintDatum *pPaintDatum = getCurrentPaintData();
 	if (pPaintDatum == nullptr)return;
 
 	if (pPaintDatum->isVideo)
 	{
 		if (m_nLastVideoIndex != m_nPaintIndex)
 		{
-			ClearStoeredVideoFrame();
+			clearStoeredVideoFrame();
 
 			if (m_pVideoTransferor != nullptr)
 			{
-				m_pVideoTransferor->Play(pPaintDatum->wstrFilePath.c_str());
+				m_pVideoTransferor->play(pPaintDatum->wstrFilePath.c_str());
 
-				m_videoTimer.Start();
+				m_videoTimer.start();
 			}
 
 			m_nLastVideoIndex = m_nPaintIndex;
@@ -855,14 +865,14 @@ void CMainWindow::UpdatePaintData()
 	else
 	{
 		m_nLastVideoIndex = 0;
-		ClearStoeredVideoFrame();
-		m_videoTimer.End();
+		clearStoeredVideoFrame();
+		m_videoTimer.end();
 	}
 
-	UpdateScreen();
+	updateScreen();
 }
 /*文章送り・戻し*/
-void CMainWindow::ShiftScene(bool forward)
+void CMainWindow::shiftScene(bool forward)
 {
 	if (forward)
 	{
@@ -875,16 +885,16 @@ void CMainWindow::ShiftScene(bool forward)
 		if (m_nSceneIndex >= m_sceneData.size())m_nSceneIndex = m_sceneData.size() - 1;
 	}
 
-	UpdateScene();
+	updateScene();
 }
 
-void CMainWindow::UpdateScene()
+void CMainWindow::updateScene()
 {
-	UpdateText();
-	UpdatePaintData();
+	updateText();
+	updatePaintData();
 }
 /*文章更新*/
-void CMainWindow::UpdateText()
+void CMainWindow::updateText()
 {
 	if (m_nSceneIndex < m_sceneData.size())
 	{
@@ -896,7 +906,7 @@ void CMainWindow::UpdateText()
 			{
 				if (m_pAudioPlayer != nullptr)
 				{
-					m_pAudioPlayer->Play(t.wstrVoicePath.c_str());
+					m_pAudioPlayer->play(t.wstrVoicePath.c_str());
 				}
 			}
 			constexpr unsigned int kTimerInterval = 2000;
@@ -905,12 +915,12 @@ void CMainWindow::UpdateText()
 	}
 }
 /*自動送り*/
-void CMainWindow::AutoTexting()
+void CMainWindow::autoTexting()
 {
-	if (m_nSceneIndex < m_sceneData.size() - 1)ShiftScene(true);
+	if (m_nSceneIndex < m_sceneData.size() - 1)shiftScene(true);
 }
 /* 現在の図画受け渡し */
-const adv::PaintDatum* CMainWindow::GetCurrentPaintData()
+const adv::PaintDatum* CMainWindow::getCurrentPaintData()
 {
 	if (m_nSceneIndex < m_sceneData.size())
 	{
@@ -928,7 +938,7 @@ const adv::PaintDatum* CMainWindow::GetCurrentPaintData()
 	return nullptr;
 }
 /*表示文作成*/
-std::wstring CMainWindow::FormatCurrentText()
+std::wstring CMainWindow::formatCurrentText()
 {
 	if (m_nSceneIndex < m_sceneData.size())
 	{
@@ -945,7 +955,7 @@ std::wstring CMainWindow::FormatCurrentText()
 	return {};
 }
 /*転送動画溜め置き*/
-void CMainWindow::StoreVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> pD2D1Bitmap)
+void CMainWindow::storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> pD2D1Bitmap)
 {
 	constexpr int kMaxBufferMilliSeconds = 200;
 	if (llCurrentTime < kMaxBufferMilliSeconds)
@@ -954,12 +964,12 @@ void CMainWindow::StoreVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> 
 	}
 }
 /*溜め置き動画消去*/
-void CMainWindow::ClearStoeredVideoFrame()
+void CMainWindow::clearStoeredVideoFrame()
 {
 	m_storedVideoFrames.clear();
 }
 /*溜め置き動画取り出し*/
-ID2D1Bitmap* CMainWindow::RestoreVideoFrame(long long llCurrentTime)
+ID2D1Bitmap* CMainWindow::restoreVideoFrame(long long llCurrentTime)
 {
 	const auto& iter = m_storedVideoFrames.find(llCurrentTime);
 	if (iter != m_storedVideoFrames.cend())
@@ -969,10 +979,10 @@ ID2D1Bitmap* CMainWindow::RestoreVideoFrame(long long llCurrentTime)
 	return nullptr;
 }
 /*静画メモリ取り込み*/
-void CMainWindow::CreateImageMap()
+void CMainWindow::createImageMap()
 {
 	if (m_pD2ImageDrawer == nullptr)return;
-	ID2D1DeviceContext* const pD2d1DeviceContext = m_pD2ImageDrawer->GetD2DeviceContext();
+	ID2D1DeviceContext* const pD2d1DeviceContext = m_pD2ImageDrawer->getD2DeviceContext();
 	for (const auto& paintDatum : m_paintData)
 	{
 		if (!paintDatum.isVideo)
@@ -991,8 +1001,8 @@ void CMainWindow::CreateImageMap()
 						if (!m_hasFirstPaintDataBeenLoaded)
 						{
 							const D2D1_SIZE_F& size = pD2d1Bitmap->GetSize();
-							m_pViewManager->SetBaseSize(static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height));
-							m_pViewManager->ResetZoom();
+							m_pViewManager->setBaseSize(static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height));
+							m_pViewManager->resetZoom();
 
 							m_hasFirstPaintDataBeenLoaded = true;
 						}
@@ -1005,12 +1015,12 @@ void CMainWindow::CreateImageMap()
 	}
 }
 /*静画メモリ消去*/
-void CMainWindow::ClearImageMap()
+void CMainWindow::clearImageMap()
 {
 	m_imageMap.clear();
 }
 /*IMFMediaEngineNotify::EventNotify*/
-void CMainWindow::OnAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
+void CMainWindow::onAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
 {
 	switch (ulEvent)
 	{
@@ -1018,14 +1028,14 @@ void CMainWindow::OnAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
 
 		break;
 	case MF_MEDIA_ENGINE_EVENT_ENDED:
-		AutoTexting();
+		autoTexting();
 		break;
 	default:
 		break;
 	}
 }
 
-void CMainWindow::OnVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
+void CMainWindow::onVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
 {
 	switch (ulEvent)
 	{
@@ -1036,13 +1046,13 @@ void CMainWindow::OnVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
 			{
 				unsigned long ulWidth = 0;
 				unsigned long ulHeight = 0;
-				bool bRet = m_pVideoTransferor->GetVideoSize(&ulWidth, &ulHeight);
+				bool bRet = m_pVideoTransferor->getVideoSize(&ulWidth, &ulHeight);
 				if (bRet)
 				{
 					if (m_pViewManager != nullptr)
 					{
-						m_pViewManager->SetBaseSize(ulWidth, ulHeight);
-						m_pViewManager->ResetZoom();
+						m_pViewManager->setBaseSize(ulWidth, ulHeight);
+						m_pViewManager->resetZoom();
 					}
 					m_hasFirstPaintDataBeenLoaded = true;
 				}

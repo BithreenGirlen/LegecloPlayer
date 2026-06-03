@@ -226,7 +226,7 @@ namespace legeclo
 				{
 					if (arg.type == 3)
 					{
-						std::wstring wstr = win_text::WidenUtf8(&strFile[ulTextPos + arg.value]);
+						std::wstring wstr = win_text::WidenFromUtf8(&strFile[ulTextPos + arg.value]);
 						iLen += swprintf_s(sBuffer + iLen, bufferSize - iLen, L"s: %s, ", wstr.c_str());
 					}
 					else
@@ -363,7 +363,7 @@ bool legeclo::LoadScenario(const std::wstring& wstrFilePath, std::vector<adv::Te
 		const auto ToUtf16 = [&sBuffer, &bufferLength](std::string_view s)
 			-> const wchar_t*
 			{
-				int iLength = win_text::WidenUtf8Static(s.data(), static_cast<int>(s.size()), sBuffer, bufferSize);
+				int iLength = win_text::WidenFromUtf8InBuffer(s.data(), static_cast<int>(s.size()), sBuffer, bufferSize);
 				if (iLength > 0) [[likely]] sBuffer[iLength] = L'\0';
 				else [[unlikely]] wmemset(sBuffer, L'\0', bufferSize);
 

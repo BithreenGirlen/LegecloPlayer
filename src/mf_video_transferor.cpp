@@ -13,18 +13,18 @@ CMfVideoTransferor::CMfVideoTransferor()
 
 CMfVideoTransferor::~CMfVideoTransferor()
 {
-	ReleaseWicBitmap();
+	releaseWicBitmap();
 }
 /*転送*/
-bool CMfVideoTransferor::TransferVideoFrame(SVideoFrame* pVideoFrame, long long* currentFrameTime)
+bool CMfVideoTransferor::transferVideoFrame(SVideoFrame* pVideoFrame, long long* currentFrameTime)
 {
 	if (pVideoFrame == nullptr)return false;
 
-	if (TransferVideoFrameToWicBitmap())
+	if (transferVideoFrameToWicBitmap())
 	{
 		if (currentFrameTime != nullptr)
 		{
-			*currentFrameTime = GetCurrentTimeInMilliSeconds();
+			*currentFrameTime = getCurrentTimeInMilliSeconds();
 		}
 
 		unsigned int uiWidth = 0;
@@ -60,15 +60,15 @@ bool CMfVideoTransferor::TransferVideoFrame(SVideoFrame* pVideoFrame, long long*
 	return false;
 }
 
-bool CMfVideoTransferor::TransferVideoFrame(ID2D1DeviceContext* const pD2d1DeviceContext, ID2D1Bitmap** pD2d1Bitmap, long long* currentFrameTime)
+bool CMfVideoTransferor::transferVideoFrame(ID2D1DeviceContext* const pD2d1DeviceContext, ID2D1Bitmap** pD2d1Bitmap, long long* currentFrameTime)
 {
 	if (pD2d1DeviceContext == nullptr)return false;
 
-	if (TransferVideoFrameToWicBitmap())
+	if (transferVideoFrameToWicBitmap())
 	{
 		if (currentFrameTime != nullptr)
 		{
-			*currentFrameTime = GetCurrentTimeInMilliSeconds();
+			*currentFrameTime = getCurrentTimeInMilliSeconds();
 		}
 
 		HRESULT hr = pD2d1DeviceContext->CreateBitmapFromWicBitmap(m_pWicBitmap, D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE)), pD2d1Bitmap);
@@ -79,7 +79,7 @@ bool CMfVideoTransferor::TransferVideoFrame(ID2D1DeviceContext* const pD2d1Devic
 	return false;
 }
 
-bool CMfVideoTransferor::SetPlaybackWindow(HWND hWnd, UINT uMsg)
+bool CMfVideoTransferor::setPlaybackWindow(HWND hWnd, UINT uMsg)
 {
 	m_hRetWnd = hWnd;
 	m_uRetMsg = uMsg;
@@ -88,13 +88,13 @@ bool CMfVideoTransferor::SetPlaybackWindow(HWND hWnd, UINT uMsg)
 	return SUCCEEDED(hr);
 }
 
-bool CMfVideoTransferor::ResizeBuffer()
+bool CMfVideoTransferor::resizeBuffer()
 {
 	/*rendering mode only*/
 	return false;
 }
 
-void CMfVideoTransferor::ReleaseWicBitmap()
+void CMfVideoTransferor::releaseWicBitmap()
 {
 	if (m_pWicBitmap != nullptr)
 	{
@@ -103,24 +103,24 @@ void CMfVideoTransferor::ReleaseWicBitmap()
 	}
 }
 
-bool CMfVideoTransferor::CreateWicBitmap(unsigned long uiWidth, unsigned long uiHeight)
+bool CMfVideoTransferor::createWicBitmap(unsigned long uiWidth, unsigned long uiHeight)
 {
 	CComPtr<IWICImagingFactory> pWicImageFactory;
 	HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX::CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pWicImageFactory));
 	if (FAILED(hr))return false;
 
-	ReleaseWicBitmap();
+	releaseWicBitmap();
 
 	hr = pWicImageFactory->CreateBitmap(uiWidth, uiHeight, GUID_WICPixelFormat32bppPBGRA, WICBitmapCreateCacheOption::WICBitmapCacheOnDemand, &m_pWicBitmap);
 
 	return SUCCEEDED(hr);
 }
 
-bool CMfVideoTransferor::CheckWicBitmapSize(unsigned long uiWidth, unsigned long uiHeight)
+bool CMfVideoTransferor::checkWicBitmapSize(unsigned long uiWidth, unsigned long uiHeight)
 {
 	if (m_pWicBitmap == nullptr)
 	{
-		return CreateWicBitmap(uiWidth, uiHeight);
+		return createWicBitmap(uiWidth, uiHeight);
 	}
 	else
 	{
@@ -129,7 +129,7 @@ bool CMfVideoTransferor::CheckWicBitmapSize(unsigned long uiWidth, unsigned long
 		m_pWicBitmap->GetSize(&uiCurrentWidth, &uiCUrrenHeight);
 		if (uiWidth > uiCurrentWidth && uiHeight > uiCUrrenHeight)
 		{
-			return CreateWicBitmap(uiWidth, uiHeight);
+			return createWicBitmap(uiWidth, uiHeight);
 		}
 		else
 		{
@@ -139,7 +139,7 @@ bool CMfVideoTransferor::CheckWicBitmapSize(unsigned long uiWidth, unsigned long
 	return false;
 }
 
-bool CMfVideoTransferor::TransferVideoFrameToWicBitmap()
+bool CMfVideoTransferor::transferVideoFrameToWicBitmap()
 {
 	if (m_pMfEngineEx != nullptr)
 	{
@@ -152,10 +152,10 @@ bool CMfVideoTransferor::TransferVideoFrameToWicBitmap()
 			{
 				unsigned long ulDestWidth = 0;
 				unsigned long ulDestHeight = 0;
-				bool bRet = GetVideoSize(&ulDestWidth, &ulDestHeight);
+				bool bRet = getVideoSize(&ulDestWidth, &ulDestHeight);
 				if (!bRet)return false;
 
-				bRet = CheckWicBitmapSize(ulDestWidth, ulDestHeight);
+				bRet = checkWicBitmapSize(ulDestWidth, ulDestHeight);
 				if (!bRet)return false;
 
 				RECT dstRect{ 0, 0, static_cast<LONG>(ulDestWidth), static_cast<LONG>(ulDestHeight) };

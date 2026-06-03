@@ -27,11 +27,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 	int iRet = 0;
 	CMainWindow mainWindow;
-	bool bRet = mainWindow.Create(hInstance);
+	bool bRet = mainWindow.create(hInstance);
 	if (bRet)
 	{
 		::ShowWindow(mainWindow.GetHwnd(), nCmdShow);
-		iRet = mainWindow.MessageLoop();
+		iRet = mainWindow.messageLoop();
 	}
 
 	return iRet;

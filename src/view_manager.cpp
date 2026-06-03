@@ -14,16 +14,16 @@ CViewManager::~CViewManager()
 
 }
 /*基準長設定*/
-void CViewManager::SetBaseSize(unsigned int uiWidth, unsigned int uiHeight)
+void CViewManager::setBaseSize(unsigned int uiWidth, unsigned int uiHeight)
 {
 	m_uiBaseWidth = uiWidth;
 	m_uiBaseHeight = uiHeight;
-	WorkOutDefaultScale();
+	workOutDefaultScale();
 }
 /*尺度変更*/
-void CViewManager::Rescale(bool toUpscale)
+void CViewManager::rescale(bool toUpscale)
 {
-	constexpr float fScaleMin = 0.5f;
+	constexpr float fScaleMin = 0.25f;
 	constexpr float fScalePortion = 0.05f;
 	if (toUpscale)
 	{
@@ -34,32 +34,32 @@ void CViewManager::Rescale(bool toUpscale)
 		m_fScale -= fScalePortion;
 		if (m_fScale < fScaleMin) m_fScale = fScaleMin;
 	}
-	ResizeWindow();
+	resizeWindow();
 }
 /*原点位置移動*/
-void CViewManager::SetOffset(int iX, int iY)
+void CViewManager::setOffset(int iX, int iY)
 {
-	m_fXOffset += iX;
-	m_fYOffset += iY;
-	AdjustOffset();
-	RequestRedraw();
+	m_fOffsetX += iX;
+	m_fOffsetY += iY;
+	adjustOffset();
+	requestRedraw();
 }
 /*原寸表示*/
-void CViewManager::ResetZoom()
+void CViewManager::resetZoom()
 {
 	m_fScale = m_fDefaultScale;
-	m_fXOffset = 0;
-	m_fYOffset = 0;
+	m_fOffsetX = 0;
+	m_fOffsetY = 0;
 
-	ResizeWindow();
+	resizeWindow();
 }
 /*表示形式変更通知*/
-void CViewManager::OnStyleChanged()
+void CViewManager::onStyleChanged()
 {
-	ResizeWindow();
+	resizeWindow();
 }
 /*基準尺度算出*/
-void CViewManager::WorkOutDefaultScale()
+void CViewManager::workOutDefaultScale()
 {
 	/* 基準長がモニタ解像度より大きい場合には予め縮小する */
 
@@ -84,7 +84,7 @@ void CViewManager::WorkOutDefaultScale()
 	m_fScale = m_fDefaultScale;
 }
 /*窓寸法調整*/
-void CViewManager::ResizeWindow()
+void CViewManager::resizeWindow()
 {
 	if (m_hRetWnd != nullptr)
 	{
@@ -112,11 +112,11 @@ void CViewManager::ResizeWindow()
 		::SetWindowPos(m_hRetWnd, HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE | SWP_NOZORDER);
 	}
 
-	AdjustOffset();
-	RequestRedraw();
+	adjustOffset();
+	requestRedraw();
 }
 /*原点位置調整*/
-void CViewManager::AdjustOffset()
+void CViewManager::adjustOffset()
 {
 	if (m_hRetWnd != nullptr)
 	{
@@ -132,15 +132,15 @@ void CViewManager::AdjustOffset()
 		int iXOffsetMax = iScaledWidth > iClientWidth ? static_cast<int>((iScaledWidth - iClientWidth) / m_fScale) : 0;
 		int iYOffsetMax = iScaledHeight > iClientHeight ? static_cast<int>((iScaledHeight - iClientHeight) / m_fScale) : 0;
 
-		if (m_fXOffset < 0) m_fXOffset = 0;
-		if (m_fYOffset < 0) m_fYOffset = 0;
+		if (m_fOffsetX < 0) m_fOffsetX = 0;
+		if (m_fOffsetY < 0) m_fOffsetY = 0;
 
-		if (m_fXOffset > iXOffsetMax)m_fXOffset = static_cast<float>(iXOffsetMax);
-		if (m_fYOffset > iYOffsetMax)m_fYOffset = static_cast<float>(iYOffsetMax);
+		if (m_fOffsetX > iXOffsetMax)m_fOffsetX = static_cast<float>(iXOffsetMax);
+		if (m_fOffsetY > iYOffsetMax)m_fOffsetY = static_cast<float>(iYOffsetMax);
 	}
 }
 /*再描画要求*/
-void CViewManager::RequestRedraw() const
+void CViewManager::requestRedraw() const
 {
 	if (m_hRetWnd != nullptr)
 	{

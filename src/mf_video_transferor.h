@@ -33,20 +33,20 @@ public:
 		size_t nPixelSize = 0;
 	};
 	/// @brief Transfer as CPU image
-	bool TransferVideoFrame(SVideoFrame* pVideoFrame, long long *currentFrameTime);
+	bool transferVideoFrame(SVideoFrame* pVideoFrame, long long *currentFrameTime);
 	/// @brief Transfer as GPU resource
-	bool TransferVideoFrame(ID2D1DeviceContext* const pD2d1DeviceContext, ID2D1Bitmap** pD2d1Bitmap, long long *currentFrameTime);
+	bool transferVideoFrame(ID2D1DeviceContext* const pD2d1DeviceContext, ID2D1Bitmap** pD2d1Bitmap, long long *currentFrameTime);
 
-	bool SetPlaybackWindow(HWND hWnd, UINT uMsg) override;
-	bool ResizeBuffer() override;
+	bool setPlaybackWindow(HWND hWnd, UINT uMsg) override;
+	bool resizeBuffer() override;
 private:
 	IWICBitmap *m_pWicBitmap = nullptr;
 
-	void ReleaseWicBitmap();
-	bool CreateWicBitmap(unsigned long uiWidth, unsigned long uiHeight);
-	bool CheckWicBitmapSize(unsigned long uiWidth, unsigned long uiHeight);
+	void releaseWicBitmap();
+	bool createWicBitmap(unsigned long uiWidth, unsigned long uiHeight);
+	bool checkWicBitmapSize(unsigned long uiWidth, unsigned long uiHeight);
 
-	bool TransferVideoFrameToWicBitmap();
+	bool transferVideoFrameToWicBitmap();
 };
 
 #endif // !MF_VIDEO_TRANSFEROR_H_

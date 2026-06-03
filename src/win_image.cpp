@@ -40,50 +40,59 @@ namespace win_image
 
 		CComPtr<IWICBitmapFrameDecode> pWicFrameDecode;
 		hr = pWicBitmapDecoder->GetFrame(0, &pWicFrameDecode);
+		if (FAILED(hr))return false;
+
+		CComPtr<IWICFormatConverter> pWicFormatConverter;
+		hr = pWicImageFactory->CreateFormatConverter(&pWicFormatConverter);
+		if (FAILED(hr))return false;
+
+		pWicFormatConverter->Initialize(pWicFrameDecode, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.f, WICBitmapPaletteTypeCustom);
+		if (FAILED(hr))return false;
+
+		CComPtr<IWICBitmapScaler> pWicBmpScaler;
+		hr = pWicImageFactory->CreateBitmapScaler(&pWicBmpScaler);
+		if (FAILED(hr))return false;
+
+		UINT uiWidth = 0, uiHeight = 0;
+		hr = pWicFormatConverter->GetSize(&uiWidth, &uiHeight);
 		if (FAILED(hr)) return false;
 
-		CComPtr<IWICBitmapSource> pWicCurrentSource;
-		hr = pWicFrameDecode->QueryInterface(IID_PPV_ARGS(&pWicCurrentSource));
-		if (FAILED(hr)) return false;
-
-		if (fScale != 1.f)
-		{
-			UINT uiWidth = 0, uiHeight = 0;
-			hr = pWicCurrentSource->GetSize(&uiWidth, &uiHeight);
-			if (FAILED(hr)) return false;
-
-			CComPtr<IWICBitmapScaler> pWicBmpScaler;
-			hr = pWicImageFactory->CreateBitmapScaler(&pWicBmpScaler);
-			if (FAILED(hr)) return false;
-
-			hr = pWicBmpScaler->Initialize(pWicCurrentSource, static_cast<UINT>(uiWidth * fScale), static_cast<UINT>(uiHeight * fScale), WICBitmapInterpolationModeCubic);
-			if (FAILED(hr)) return false;
-
-			pWicCurrentSource = pWicBmpScaler;
-		}
+		hr = pWicBmpScaler->Initialize(pWicFormatConverter, static_cast<UINT>(uiWidth * fScale), static_cast<UINT>(uiHeight * fScale), WICBitmapInterpolationMode::WICBitmapInterpolationModeCubic);
+		if (FAILED(hr))return false;
 
 		if (rotation != ERotation::None)
 		{
 			WICBitmapTransformOptions ulRotation = WICBitmapTransformRotate0;
 			switch (rotation)
 			{
-			case ERotation::Deg90:  ulRotation = WICBitmapTransformRotate90;  break;
-			case ERotation::Deg180: ulRotation = WICBitmapTransformRotate180; break;
-			case ERotation::Deg270: ulRotation = WICBitmapTransformRotate270; break;
-			default: break;
+			case ERotation::None:
+				break;
+			case ERotation::Deg90:
+				ulRotation = WICBitmapTransformOptions::WICBitmapTransformRotate90;
+				break;
+			case ERotation::Deg180:
+				ulRotation = WICBitmapTransformOptions::WICBitmapTransformRotate180;
+				break;
+			case ERotation::Deg270:
+				ulRotation = WICBitmapTransformOptions::WICBitmapTransformRotate270;
+				break;
+			default:
+				break;
 			}
 
 			CComPtr<IWICBitmapFlipRotator> pWicFlipRotator;
 			hr = pWicImageFactory->CreateBitmapFlipRotator(&pWicFlipRotator);
-			if (FAILED(hr)) return false;
+			if (FAILED(hr))return false;
 
-			hr = pWicFlipRotator->Initialize(pWicCurrentSource, ulRotation);
-			if (FAILED(hr)) return false;
+			hr = pWicFlipRotator->Initialize(pWicBmpScaler, ulRotation);
+			if (FAILED(hr))return false;
 
-			pWicCurrentSource = pWicFlipRotator;
+			hr = pWicImageFactory->CreateBitmapFromSource(pWicFlipRotator, WICBitmapCacheOnDemand, pOutWicBitmap);
 		}
-
-		hr = pWicImageFactory->CreateBitmapFromSource(pWicCurrentSource, WICBitmapCacheOnDemand, pOutWicBitmap);
+		else
+		{
+			hr = pWicImageFactory->CreateBitmapFromSource(pWicBmpScaler, WICBitmapCacheOnDemand, pOutWicBitmap);
+		}
 
 		return SUCCEEDED(hr);
 	}
@@ -217,12 +226,12 @@ namespace win_image
 	class CWicGifEncoder::Impl
 	{
 	public:
-		bool Initialise(const wchar_t* filePath);
-		bool HasBeenInitialised() const { return m_hasBeenInitialised; }
+		bool initialise(const wchar_t* filePath);
+		bool hasBeenInitialised() const { return m_hasBeenInitialised; }
 
-		bool CommitFrame(unsigned int width, unsigned int height, unsigned int stride, unsigned char* pixels, bool hasAlpha, unsigned short delay);
+		bool commitFrame(unsigned int width, unsigned int height, unsigned int stride, unsigned char* pixels, bool hasAlpha, unsigned short delay);
 
-		bool Finalise();
+		bool finalise();
 	private:
 		CComPtr<IWICImagingFactory> m_pWicImagingFactory;
 		CComPtr<IWICBitmapEncoder> m_pWicBitmapEncoder;
@@ -232,7 +241,7 @@ namespace win_image
 	};
 
 
-	bool CWicGifEncoder::Impl::Initialise(const wchar_t* filePath)
+	bool CWicGifEncoder::Impl::initialise(const wchar_t* filePath)
 	{
 		HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_pWicImagingFactory));
 		if (FAILED(hr))return false;
@@ -280,7 +289,7 @@ namespace win_image
 		return m_hasBeenInitialised;
 	}
 
-	bool CWicGifEncoder::Impl::CommitFrame(unsigned int width, unsigned int height, unsigned int stride, unsigned char* pixels, bool hasAlpha, unsigned short delay)
+	bool CWicGifEncoder::Impl::commitFrame(unsigned int width, unsigned int height, unsigned int stride, unsigned char* pixels, bool hasAlpha, unsigned short delay)
 	{
 		CComPtr<IWICBitmapFrameEncode> pWicBitmapFrameEncode;
 		CComPtr<IPropertyBag2> pPropertyBag;
@@ -358,7 +367,7 @@ namespace win_image
 		return SUCCEEDED(hr);
 	}
 
-	bool CWicGifEncoder::Impl::Finalise()
+	bool CWicGifEncoder::Impl::finalise()
 	{
 		HRESULT hr = m_pWicBitmapEncoder->Commit();
 
@@ -382,25 +391,25 @@ namespace win_image
 		delete m_impl;
 	}
 
-	bool CWicGifEncoder::Initialise(const wchar_t* filePath)
+	bool CWicGifEncoder::initialise(const wchar_t* filePath)
 	{
-		return m_impl->Initialise(filePath);
+		return m_impl->initialise(filePath);
 	}
 
-	bool CWicGifEncoder::HasBeenInitialised() const
+	bool CWicGifEncoder::hasBeenInitialised() const
 	{
-		return m_impl->HasBeenInitialised();
+		return m_impl->hasBeenInitialised();
 	}
 
-	bool CWicGifEncoder::CommitFrame(unsigned int width, unsigned int height, unsigned int stride, unsigned char* pixels, bool hasAlpha, float delayInSeconds)
+	bool CWicGifEncoder::commitFrame(unsigned int width, unsigned int height, unsigned int stride, unsigned char* pixels, bool hasAlpha, float delayInSeconds)
 	{
 		unsigned short delayInHundredths = static_cast<unsigned short>(delayInSeconds * 100.f);
 
-		return m_impl->CommitFrame(width, height, stride, pixels, hasAlpha, delayInHundredths == 0 ? 1 : delayInHundredths);
+		return m_impl->commitFrame(width, height, stride, pixels, hasAlpha, delayInHundredths == 0 ? 1 : delayInHundredths);
 	}
 
-	bool CWicGifEncoder::Finalise()
+	bool CWicGifEncoder::finalise()
 	{
-		return m_impl->Finalise();
+		return m_impl->finalise();
 	}
 }
