@@ -121,6 +121,8 @@ private:
 
 	std::vector<adv::LabelDatum> m_labelData;
 
+	std::wstring m_formattedText;
+
 	bool m_hasFirstPaintDataBeenLoaded = false;
 	bool m_isTextHidden = false;
 	bool m_isImageSynced = true;
@@ -137,7 +139,6 @@ private:
 	void autoTexting();
 
 	const adv::PaintDatum* getCurrentPaintData();
-	std::wstring formatCurrentText();
 
 	std::map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
 	void storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> pD2D1Bitmap);

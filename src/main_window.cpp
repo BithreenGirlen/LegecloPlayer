@@ -287,8 +287,7 @@ LRESULT CMainWindow::onPaint()
 	{
 		if (!m_isTextHidden && m_pD2TextWriter != nullptr)
 		{
-			const std::wstring wstr = formatCurrentText();
-			m_pD2TextWriter->outLinedDraw(wstr.c_str(), wstr.size());
+			m_pD2TextWriter->outLinedDraw(m_formattedText.c_str(), m_formattedText.size());
 		}
 		m_pD2ImageDrawer->display();
 	}
@@ -900,6 +899,14 @@ void CMainWindow::updateText()
 		if (nTextIndex < m_textData.size())
 		{
 			const adv::TextDatum& t = m_textData[nTextIndex];
+
+			m_formattedText.assign(t.wstrText);
+			if (!m_formattedText.empty() && m_formattedText.back() != L'\n')m_formattedText.push_back(L'\n');
+
+			wchar_t buffer[64]{};
+			::swprintf_s(buffer, L"%zu/%zu", nTextIndex + 1, m_textData.size());
+			m_formattedText += buffer;
+
 			if (!t.wstrVoicePath.empty())
 			{
 				if (m_pAudioPlayer != nullptr)
@@ -934,23 +941,6 @@ const adv::PaintDatum* CMainWindow::getCurrentPaintData()
 	}
 
 	return nullptr;
-}
-/*表示文作成*/
-std::wstring CMainWindow::formatCurrentText()
-{
-	if (m_nSceneIndex < m_sceneData.size())
-	{
-		const size_t textIndex = m_sceneData[m_nSceneIndex].nTextIndex;
-		if (textIndex < m_textData.size())
-		{
-			std::wstring wstr = m_textData[textIndex].wstrText;
-			if (!wstr.empty() && wstr.back() != L'\n')wstr.push_back(L'\n');
-			wstr += std::to_wstring(textIndex + 1).append(L"/").append(std::to_wstring(m_textData.size()));
-			return wstr;
-		}
-	}
-
-	return {};
 }
 /*転送動画溜め置き*/
 void CMainWindow::storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> pD2D1Bitmap)
