@@ -105,9 +105,9 @@ private:
 
 	CD2ImageDrawer* m_pD2ImageDrawer = nullptr;
 	CD2TextWriter* m_pD2TextWriter = nullptr;
-	CMfMediaPlayer* m_pAudioPlayer = nullptr;
-	CMfVideoTransferor* m_pVideoTransferor = nullptr;
-	CViewManager* m_pViewManager = nullptr;
+	CMfMediaPlayer m_audioPlayer;
+	CMfVideoTransferor m_videoTransferor;
+	CViewManager m_viewManager;
 	CFontSettingDialogue m_fontSettingDiallogue;
 
 	std::vector<adv::TextDatum> m_textData;
@@ -141,7 +141,7 @@ private:
 	const adv::PaintDatum* getCurrentPaintData();
 
 	std::map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
-	void storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> pD2D1Bitmap);
+	void storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap>& pD2D1Bitmap);
 	void clearStoeredVideoFrame();
 	ID2D1Bitmap* restoreVideoFrame(long long llCurrentTime);
 

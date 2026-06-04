@@ -6,10 +6,10 @@
 class CViewManager
 {
 public:
-    CViewManager(HWND hWnd);
-    ~CViewManager();
+    CViewManager() = default;
+    ~CViewManager() = default;
 
-    void setBaseSize(unsigned int uiWidth, unsigned int uiHeight);
+    void setBaseSize(HWND hRenderTargetWindow, unsigned int width, unsigned int height);
     void rescale(bool toUpscale);
     void setOffset(int iX, int iY);
     void resetZoom();
@@ -21,10 +21,10 @@ public:
 private:
     enum Constants { kBaseWidth = 1280, kBaseHeight = 720 };
 
-    HWND m_hRetWnd = nullptr;
+    HWND m_hRenderTargetWnd = nullptr;
 
-    unsigned int m_uiBaseWidth = Constants::kBaseWidth;
-    unsigned int m_uiBaseHeight = Constants::kBaseHeight;
+    unsigned int m_baseWidth = Constants::kBaseWidth;
+    unsigned int m_baseHeight = Constants::kBaseHeight;
     float m_fDefaultScale = 1.f;
 
     float m_fScale = 1.f;

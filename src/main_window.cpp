@@ -168,17 +168,13 @@ LRESULT CMainWindow::onCreate(HWND hWnd)
 
 	m_pD2ImageDrawer = new CD2ImageDrawer(m_hWnd);
 
-	m_pAudioPlayer = new CMfMediaPlayer();
-	m_pAudioPlayer->setPlaybackWindow(m_hWnd, EventMessage::kAudioPlayer);
-
-	m_pVideoTransferor = new CMfVideoTransferor();
-	m_pVideoTransferor->setPlaybackWindow(m_hWnd, EventMessage::kVideoPlayer);
-	m_pVideoTransferor->setLoop(true);
-
 	m_pD2TextWriter = new CD2TextWriter(m_pD2ImageDrawer->getD2Factory(), m_pD2ImageDrawer->getD2DeviceContext());
 	m_pD2TextWriter->setupOutLinedDrawing(L"C:\\Windows\\Fonts\\yumindb.ttf");
 
-	m_pViewManager = new CViewManager(m_hWnd);
+	m_audioPlayer.setPlaybackWindow(m_hWnd, EventMessage::kAudioPlayer);
+
+	m_videoTransferor.setPlaybackWindow(m_hWnd, EventMessage::kVideoPlayer);
+	m_videoTransferor.setLoop(true);
 
 	return 0;
 }
@@ -208,24 +204,6 @@ LRESULT CMainWindow::onClose()
 		m_pD2ImageDrawer = nullptr;
 	}
 
-	if (m_pAudioPlayer != nullptr)
-	{
-		delete m_pAudioPlayer;
-		m_pAudioPlayer = nullptr;
-	}
-
-	if (m_pVideoTransferor != nullptr)
-	{
-		delete m_pVideoTransferor;
-		m_pVideoTransferor = nullptr;
-	}
-
-	if (m_pViewManager != nullptr)
-	{
-		delete m_pViewManager;
-		m_pViewManager = nullptr;
-	}
-
 	::DestroyWindow(m_hWnd);
 	::UnregisterClassW(m_className, m_hInstance);
 
@@ -237,8 +215,7 @@ LRESULT CMainWindow::onPaint()
 	PAINTSTRUCT ps;
 	HDC hdc = ::BeginPaint(m_hWnd, &ps);
 
-	if (m_pD2ImageDrawer == nullptr || m_pVideoTransferor == nullptr || m_pD2TextWriter == nullptr
-		|| m_pViewManager == nullptr || m_nPaintIndex >= m_paintData.size())
+	if (m_pD2ImageDrawer == nullptr || m_pD2TextWriter == nullptr || m_nPaintIndex >= m_paintData.size())
 	{
 		::EndPaint(m_hWnd, &ps);
 		return 0;
@@ -254,10 +231,10 @@ LRESULT CMainWindow::onPaint()
 		{
 			CComPtr<ID2D1Bitmap> d2d1Bitmap;
 			long long frameTime = 0;
-			bRet = m_pVideoTransferor->transferVideoFrame(m_pD2ImageDrawer->getD2DeviceContext(), &d2d1Bitmap, &frameTime);
+			bRet = m_videoTransferor.transferVideoFrame(m_pD2ImageDrawer->getD2DeviceContext(), &d2d1Bitmap, &frameTime);
 			if (bRet)
 			{
-				bRet = m_pD2ImageDrawer->draw(d2d1Bitmap.p, { m_pViewManager->getOffsetX(), m_pViewManager->getOffsetY() }, m_pViewManager->getScale());
+				bRet = m_pD2ImageDrawer->draw(d2d1Bitmap.p, { m_viewManager.getOffsetX(), m_viewManager.getOffsetY() }, m_viewManager.getScale());
 				if (bRet)
 				{
 					storeVideoFrame(frameTime, d2d1Bitmap);
@@ -265,11 +242,11 @@ LRESULT CMainWindow::onPaint()
 			}
 			else
 			{
-				long long llCurrentTime = m_pVideoTransferor->getCurrentTimeInMilliSeconds();
+				long long llCurrentTime = m_videoTransferor.getCurrentTimeInMilliSeconds();
 				ID2D1Bitmap* p = restoreVideoFrame(llCurrentTime);
 				if (p != nullptr)
 				{
-					bRet = m_pD2ImageDrawer->draw(p, { m_pViewManager->getOffsetX(), m_pViewManager->getOffsetY() }, m_pViewManager->getScale());
+					bRet = m_pD2ImageDrawer->draw(p, { m_viewManager.getOffsetX(), m_viewManager.getOffsetY() }, m_viewManager.getScale());
 				}
 			}
 		}
@@ -278,7 +255,7 @@ LRESULT CMainWindow::onPaint()
 			const auto& iter = m_imageMap.find(pPaintDatum->wstrFilePath);
 			if (iter != m_imageMap.cend())
 			{
-				bRet = m_pD2ImageDrawer->draw(iter->second.p, { m_pViewManager->getOffsetX(), m_pViewManager->getOffsetY() }, m_pViewManager->getScale());
+				bRet = m_pD2ImageDrawer->draw(iter->second.p, { m_viewManager.getOffsetX(), m_viewManager.getOffsetY() }, m_viewManager.getScale());
 			}
 		}
 	}
@@ -400,12 +377,9 @@ LRESULT CMainWindow::onTimer(WPARAM wParam)
 	switch (wParam)
 	{
 	case Timer::kText:
-		if (m_pAudioPlayer != nullptr)
+		if (m_audioPlayer.isEnded())
 		{
-			if (m_pAudioPlayer->isEnded())
-			{
-				autoTexting();
-			}
+			autoTexting();
 		}
 		break;
 	default:
@@ -416,22 +390,19 @@ LRESULT CMainWindow::onTimer(WPARAM wParam)
 /* WM_MOUSEMOVE */
 LRESULT CMainWindow::onMouseMove(WPARAM wParam, LPARAM lParam)
 {
-	WORD usKey = LOWORD(wParam);
-	if (usKey == MK_LBUTTON)
+	WORD pressedKeyState = LOWORD(wParam);
+	if (pressedKeyState == MK_LBUTTON)
 	{
 		POINT pt{};
 		::GetCursorPos(&pt);
 
 		if (m_mouseState.hasLeftBeenDragged)
 		{
-			if (m_pViewManager != nullptr)
-			{
-				int iX = m_mouseState.lastCursorPos.x - pt.x;
-				int iY = m_mouseState.lastCursorPos.y - pt.y;
+			int iX = m_mouseState.lastCursorPos.x - pt.x;
+			int iY = m_mouseState.lastCursorPos.y - pt.y;
 
-				m_pViewManager->setOffset(iX, iY);
-				updateScreen();
-			}
+			m_viewManager.setOffset(iX, iY);
+			updateScreen();
 		}
 
 		m_mouseState.lastCursorPos = pt;
@@ -445,13 +416,13 @@ LRESULT CMainWindow::onMouseWheel(WPARAM wParam, LPARAM lParam)
 {
 	short usDelta = static_cast<short>(HIWORD(wParam));
 	int iScroll = -usDelta / WHEEL_DELTA;
-	WORD usKey = LOWORD(wParam);
 
-	if (usKey == MK_LBUTTON)
+	WORD pressedKeyState = LOWORD(wParam);
+	if (pressedKeyState == MK_LBUTTON)
 	{
 
 	}
-	else if (usKey == MK_RBUTTON)
+	else if (pressedKeyState == MK_RBUTTON)
 	{
 		shiftScene(iScroll > 0);
 
@@ -459,10 +430,7 @@ LRESULT CMainWindow::onMouseWheel(WPARAM wParam, LPARAM lParam)
 	}
 	else
 	{
-		if (m_pViewManager != nullptr)
-		{
-			m_pViewManager->rescale(iScroll > 0);
-		}
+		m_viewManager.rescale(iScroll > 0);
 	}
 
 	return 0;
@@ -487,37 +455,42 @@ LRESULT CMainWindow::onLButtonUp(WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 
-	WORD usKey = LOWORD(wParam);
-
-	if (usKey == MK_RBUTTON && m_isFramelessWindow)
+	WORD pressedKeyState = LOWORD(wParam);
+	if (pressedKeyState == MK_RBUTTON)
 	{
-		::PostMessage(m_hWnd, WM_SYSCOMMAND, SC_MOVE, 0);
-		INPUT input{};
-		input.type = INPUT_KEYBOARD;
-		input.ki.wVk = VK_DOWN;
-		::SendInput(1, &input, sizeof(input));
-
-		m_mouseState.wasRightCombined = true;
-	}
-
-	if (usKey == 0 && m_mouseState.wasLeftPressed)
-	{
-		POINT pt{};
-		::GetCursorPos(&pt);
-		int iX = m_mouseState.lastCursorPos.x - pt.x;
-		int iY = m_mouseState.lastCursorPos.y - pt.y;
-
-		if (iX == 0 && iY == 0)
+		if (m_isFramelessWindow)
 		{
-			if (m_pVideoTransferor->isPaused())
+			::PostMessage(m_hWnd, WM_SYSCOMMAND, SC_MOVE, 0);
+			INPUT input{};
+			input.type = INPUT_KEYBOARD;
+			input.ki.wVk = VK_DOWN;
+			::SendInput(1, &input, sizeof(input));
+
+			m_mouseState.wasRightCombined = true;
+		}
+	}
+	else if (pressedKeyState == 0)
+	{
+		if (m_mouseState.wasLeftPressed)
+		{
+			POINT pt{};
+			::GetCursorPos(&pt);
+			int iX = m_mouseState.lastCursorPos.x - pt.x;
+			int iY = m_mouseState.lastCursorPos.y - pt.y;
+
+			if (iX == 0 && iY == 0)
 			{
-				m_pVideoTransferor->frameStep(true);
-			}
-			else
-			{
-				shiftPaintData();
+				if (m_videoTransferor.isPaused())
+				{
+					m_videoTransferor.frameStep(true);
+				}
+				else
+				{
+					shiftPaintData();
+				}
 			}
 		}
+
 	}
 
 	m_mouseState.wasLeftPressed = false;
@@ -534,9 +507,8 @@ LRESULT CMainWindow::onRButtonUp(WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 
-	WORD usKey = LOWORD(wParam);
-
-	if (usKey == 0)
+	WORD pressedKeyState = LOWORD(wParam);
+	if (pressedKeyState == 0)
 	{
 		if (isPlayReady() && !m_labelData.empty())
 		{
@@ -567,16 +539,12 @@ LRESULT CMainWindow::onRButtonUp(WPARAM wParam, LPARAM lParam)
 /*WM_MBUTTONUP*/
 LRESULT CMainWindow::onMButtonUp(WPARAM wParam, LPARAM lParam)
 {
-	WORD usKey = LOWORD(wParam);
-	if (usKey == 0)
+	WORD pressedKeyState = LOWORD(wParam);
+	if (pressedKeyState == 0)
 	{
-		if (m_pViewManager != nullptr)
-		{
-			m_pViewManager->resetZoom();
-		}
+		m_viewManager.resetZoom();
 	}
-
-	if (usKey == MK_RBUTTON)
+	else if (pressedKeyState == MK_RBUTTON)
 	{
 		toggleWindowFrameStyle();
 
@@ -667,20 +635,14 @@ void CMainWindow::menuOnForeFile()
 /*音声設定画面呼び出し*/
 void CMainWindow::menuOnAudioSetting()
 {
-	if (m_pAudioPlayer != nullptr)
-	{
-		CMediaSettingDialogue mediaSettingDialogue;
-		mediaSettingDialogue.open(m_hInstance, m_hWnd, m_pAudioPlayer, L"Audio");
-	}
+	CMediaSettingDialogue mediaSettingDialogue;
+	mediaSettingDialogue.open(m_hInstance, m_hWnd, &m_audioPlayer, L"Audio");
 }
 /*動画設定画面呼び出し*/
 void CMainWindow::menuOnVideoSetting()
 {
-	if (m_pVideoTransferor != nullptr)
-	{
-		CMediaSettingDialogue mediaSettingDialogue;
-		mediaSettingDialogue.open(m_hInstance, m_hWnd, m_pVideoTransferor, L"Video");
-	}
+	CMediaSettingDialogue mediaSettingDialogue;
+	mediaSettingDialogue.open(m_hInstance, m_hWnd, &m_videoTransferor, L"Video");
 }
 
 void CMainWindow::menuOnFontSetting()
@@ -698,14 +660,11 @@ void CMainWindow::menuOnFontSetting()
 /*動画一時停止*/
 void CMainWindow::menuOnPauseVideo()
 {
-	if (m_pVideoTransferor != nullptr)
+	bool toBePaused = !m_videoTransferor.isPaused();
+	bool bRet = m_videoTransferor.setPause(toBePaused);
+	if (bRet)
 	{
-		bool toBePaused = !m_pVideoTransferor->isPaused();
-		bool bRet = m_pVideoTransferor->setPause(toBePaused);
-		if (bRet)
-		{
-			window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kPauseVideo, toBePaused);
-		}
+		window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kPauseVideo, toBePaused);
 	}
 }
 void CMainWindow::menuOnSyncImage()
@@ -757,10 +716,7 @@ void CMainWindow::toggleWindowFrameStyle()
 		::SetMenu(m_hWnd, m_hMenuBar);
 	}
 
-	if (m_pViewManager != nullptr)
-	{
-		m_pViewManager->onStyleChanged();
-	}
+	m_viewManager.onStyleChanged();
 }
 
 void CMainWindow::updateMenuItemState() const
@@ -789,7 +745,7 @@ bool CMainWindow::setupScenario(const std::wstring& scriptFilePath)
 	}
 
 	changeWindowTitle(bRet ? scriptFilePath.data() : nullptr);
-	if(hadBeenReady != bRet) updateMenuItemState();
+	if (hadBeenReady != bRet) updateMenuItemState();
 
 	return bRet;
 }
@@ -813,6 +769,8 @@ void CMainWindow::clearScenarioData()
 	clearStoeredVideoFrame();
 
 	m_hasFirstPaintDataBeenLoaded = false;
+
+	m_formattedText.clear();
 }
 /*再描画要求*/
 void CMainWindow::updateScreen() const
@@ -840,7 +798,7 @@ void CMainWindow::updatePaintData()
 {
 	if (m_nPaintIndex >= m_paintData.size())return;
 
-	const adv::PaintDatum *pPaintDatum = getCurrentPaintData();
+	const adv::PaintDatum* pPaintDatum = getCurrentPaintData();
 	if (pPaintDatum == nullptr)return;
 
 	if (pPaintDatum->isVideo)
@@ -849,12 +807,9 @@ void CMainWindow::updatePaintData()
 		{
 			clearStoeredVideoFrame();
 
-			if (m_pVideoTransferor != nullptr)
-			{
-				m_pVideoTransferor->play(pPaintDatum->wstrFilePath.c_str());
+			m_videoTransferor.play(pPaintDatum->wstrFilePath.c_str());
 
-				m_videoTimer.start();
-			}
+			m_videoTimer.start();
 
 			m_nLastVideoIndex = m_nPaintIndex;
 		}
@@ -901,7 +856,10 @@ void CMainWindow::updateText()
 			const adv::TextDatum& t = m_textData[nTextIndex];
 
 			m_formattedText.assign(t.wstrText);
-			if (!m_formattedText.empty() && m_formattedText.back() != L'\n')m_formattedText.push_back(L'\n');
+			if (!m_formattedText.empty() && m_formattedText.back() != L'\n')
+			{
+				m_formattedText.push_back(L'\n');
+			}
 
 			wchar_t buffer[64]{};
 			::swprintf_s(buffer, L"%zu/%zu", nTextIndex + 1, m_textData.size());
@@ -909,10 +867,7 @@ void CMainWindow::updateText()
 
 			if (!t.wstrVoicePath.empty())
 			{
-				if (m_pAudioPlayer != nullptr)
-				{
-					m_pAudioPlayer->play(t.wstrVoicePath.c_str());
-				}
+				m_audioPlayer.play(t.wstrVoicePath.c_str());
 			}
 			constexpr unsigned int kTimerInterval = 2000;
 			::SetTimer(m_hWnd, Timer::kText, kTimerInterval, nullptr);
@@ -943,7 +898,7 @@ const adv::PaintDatum* CMainWindow::getCurrentPaintData()
 	return nullptr;
 }
 /*転送動画溜め置き*/
-void CMainWindow::storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap> pD2D1Bitmap)
+void CMainWindow::storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap>& pD2D1Bitmap)
 {
 	constexpr int kMaxBufferMilliSeconds = 200;
 	if (llCurrentTime < kMaxBufferMilliSeconds)
@@ -989,8 +944,8 @@ void CMainWindow::createImageMap()
 						if (!m_hasFirstPaintDataBeenLoaded)
 						{
 							const D2D1_SIZE_F& size = pD2d1Bitmap->GetSize();
-							m_pViewManager->setBaseSize(static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height));
-							m_pViewManager->resetZoom();
+							m_viewManager.setBaseSize(m_hWnd, static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height));
+							m_viewManager.resetZoom();
 
 							m_hasFirstPaintDataBeenLoaded = true;
 						}
@@ -1028,22 +983,17 @@ void CMainWindow::onVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
 	switch (ulEvent)
 	{
 	case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
-		if (m_pVideoTransferor != nullptr)
+		if (!m_hasFirstPaintDataBeenLoaded)
 		{
-			if (!m_hasFirstPaintDataBeenLoaded)
+			unsigned long ulWidth = 0;
+			unsigned long ulHeight = 0;
+			bool bRet = m_videoTransferor.getVideoSize(&ulWidth, &ulHeight);
+			if (bRet)
 			{
-				unsigned long ulWidth = 0;
-				unsigned long ulHeight = 0;
-				bool bRet = m_pVideoTransferor->getVideoSize(&ulWidth, &ulHeight);
-				if (bRet)
-				{
-					if (m_pViewManager != nullptr)
-					{
-						m_pViewManager->setBaseSize(ulWidth, ulHeight);
-						m_pViewManager->resetZoom();
-					}
-					m_hasFirstPaintDataBeenLoaded = true;
-				}
+				m_viewManager.setBaseSize(m_hWnd, ulWidth, ulHeight);
+				m_viewManager.resetZoom();
+
+				m_hasFirstPaintDataBeenLoaded = true;
 			}
 		}
 		break;

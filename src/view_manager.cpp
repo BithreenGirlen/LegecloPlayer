@@ -3,21 +3,13 @@
 #include "view_manager.h"
 
 
-CViewManager::CViewManager(HWND hWnd)
-	:m_hRetWnd(hWnd)
-{
-
-}
-
-CViewManager::~CViewManager()
-{
-
-}
 /*基準長設定*/
-void CViewManager::setBaseSize(unsigned int uiWidth, unsigned int uiHeight)
+void CViewManager::setBaseSize(HWND hRenderTargetWindow, unsigned int width, unsigned int height)
 {
-	m_uiBaseWidth = uiWidth;
-	m_uiBaseHeight = uiHeight;
+	m_hRenderTargetWnd = hRenderTargetWindow;
+	m_baseWidth = width;
+	m_baseHeight = height;
+
 	workOutDefaultScale();
 }
 /*尺度変更*/
@@ -65,20 +57,20 @@ void CViewManager::workOutDefaultScale()
 
 	unsigned int uiMonitorWidth = static_cast<unsigned int>(::GetSystemMetrics(SM_CXSCREEN));
 	unsigned int uiMonitorHeight = static_cast<unsigned int>(::GetSystemMetrics(SM_CYSCREEN));
-	if (m_uiBaseWidth > uiMonitorWidth || m_uiBaseHeight > uiMonitorHeight)
+	if (m_baseWidth > uiMonitorWidth || m_baseHeight > uiMonitorHeight)
 	{
 		if (uiMonitorWidth > uiMonitorHeight)
 		{
-			m_fDefaultScale = static_cast<float>(uiMonitorHeight) / m_uiBaseHeight;
+			m_fDefaultScale = static_cast<float>(uiMonitorHeight) / m_baseHeight;
 		}
 		else
 		{
-			m_fDefaultScale = static_cast<float>(uiMonitorWidth) / m_uiBaseWidth;
+			m_fDefaultScale = static_cast<float>(uiMonitorWidth) / m_baseWidth;
 		}
 	}
 	else
 	{
-		m_fDefaultScale = ::GetDpiForWindow(m_hRetWnd) / 96.f;
+		m_fDefaultScale = ::GetDpiForWindow(m_hRenderTargetWnd) / 96.f;
 	}
 
 	m_fScale = m_fDefaultScale;
@@ -86,30 +78,30 @@ void CViewManager::workOutDefaultScale()
 /*窓寸法調整*/
 void CViewManager::resizeWindow()
 {
-	if (m_hRetWnd != nullptr)
+	if (m_hRenderTargetWnd != nullptr)
 	{
 		const auto IsWidowBarHidden = [this]()
 			-> bool
 			{
-				if (m_hRetWnd != nullptr)
+				if (m_hRenderTargetWnd != nullptr)
 				{
-					LONG lStyle = ::GetWindowLong(m_hRetWnd, GWL_STYLE);
+					LONG lStyle = ::GetWindowLong(m_hRenderTargetWnd, GWL_STYLE);
 					return !((lStyle & WS_CAPTION) && (lStyle & WS_SYSMENU));
 				}
 				return false;
 			};
 
 		RECT rect;
-		::GetWindowRect(m_hRetWnd, &rect);
-		int iX = static_cast<int>(m_uiBaseWidth * m_fScale);
-		int iY = static_cast<int>(m_uiBaseHeight * m_fScale);
+		::GetWindowRect(m_hRenderTargetWnd, &rect);
+		int iX = static_cast<int>(m_baseWidth * m_fScale);
+		int iY = static_cast<int>(m_baseHeight * m_fScale);
 
 		rect.right = iX + rect.left;
 		rect.bottom = iY + rect.top;
-		LONG lStyle = ::GetWindowLong(m_hRetWnd, GWL_STYLE);
+		LONG lStyle = ::GetWindowLong(m_hRenderTargetWnd, GWL_STYLE);
 		bool bBarHidden = IsWidowBarHidden();
 		::AdjustWindowRect(&rect, lStyle, bBarHidden ? FALSE : TRUE);
-		::SetWindowPos(m_hRetWnd, HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE | SWP_NOZORDER);
+		::SetWindowPos(m_hRenderTargetWnd, HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE | SWP_NOZORDER);
 	}
 
 	adjustOffset();
@@ -118,13 +110,13 @@ void CViewManager::resizeWindow()
 /*原点位置調整*/
 void CViewManager::adjustOffset()
 {
-	if (m_hRetWnd != nullptr)
+	if (m_hRenderTargetWnd != nullptr)
 	{
-		int iScaledWidth = static_cast<int>(m_uiBaseWidth * m_fScale);
-		int iScaledHeight = static_cast<int>(m_uiBaseHeight * m_fScale);
+		int iScaledWidth = static_cast<int>(m_baseWidth * m_fScale);
+		int iScaledHeight = static_cast<int>(m_baseHeight * m_fScale);
 
 		RECT rc;
-		::GetClientRect(m_hRetWnd, &rc);
+		::GetClientRect(m_hRenderTargetWnd, &rc);
 
 		int iClientWidth = rc.right - rc.left;
 		int iClientHeight = rc.bottom - rc.top;
@@ -142,8 +134,8 @@ void CViewManager::adjustOffset()
 /*再描画要求*/
 void CViewManager::requestRedraw() const
 {
-	if (m_hRetWnd != nullptr)
+	if (m_hRenderTargetWnd != nullptr)
 	{
-		::InvalidateRect(m_hRetWnd, nullptr, FALSE);
+		::InvalidateRect(m_hRenderTargetWnd, nullptr, FALSE);
 	}
 }
