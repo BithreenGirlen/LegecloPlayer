@@ -65,10 +65,15 @@ private:
 	struct EventMessage { enum { kAudioPlayer = WM_USER + 1, kVideoPlayer }; };
 	struct Timer { enum { kText = 1}; };
 
-	POINT m_lastCursorPos{};
-	bool m_wasLeftPressed = false;
-	bool m_hasLeftBeenDragged = false;
-	bool m_wasRightCombined = false;
+	struct MouseState
+	{
+		bool wasLeftPressed = false;
+		bool hasLeftBeenDragged = false;
+		bool wasRightCombined = false;
+		POINT lastCursorPos{};
+	};
+
+	MouseState m_mouseState;
 
 	HMENU m_hMenuBar = nullptr;
 	bool m_isFramelessWindow = false;
@@ -89,11 +94,11 @@ private:
 	void menuOnPauseVideo();
 	void menuOnSyncImage();
 
-	void changeWindowTitle(const wchar_t* pzTitle);
+	void changeWindowTitle(const wchar_t* windowTitle);
 	void toggleWindowFrameStyle();
 	void updateMenuItemState() const;
 
-	bool setupScenario(const wchar_t* scriptFilePath);
+	bool setupScenario(const std::wstring& scriptFilePath);
 	void clearScenarioData();
 
 	void updateScreen() const;

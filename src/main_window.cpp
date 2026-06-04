@@ -423,20 +423,20 @@ LRESULT CMainWindow::onMouseMove(WPARAM wParam, LPARAM lParam)
 		POINT pt{};
 		::GetCursorPos(&pt);
 
-		if (m_hasLeftBeenDragged)
+		if (m_mouseState.hasLeftBeenDragged)
 		{
 			if (m_pViewManager != nullptr)
 			{
-				int iX = m_lastCursorPos.x - pt.x;
-				int iY = m_lastCursorPos.y - pt.y;
+				int iX = m_mouseState.lastCursorPos.x - pt.x;
+				int iY = m_mouseState.lastCursorPos.y - pt.y;
 
 				m_pViewManager->setOffset(iX, iY);
 				updateScreen();
 			}
 		}
 
-		m_lastCursorPos = pt;
-		m_hasLeftBeenDragged = true;
+		m_mouseState.lastCursorPos = pt;
+		m_mouseState.hasLeftBeenDragged = true;
 	}
 
 	return 0;
@@ -456,7 +456,7 @@ LRESULT CMainWindow::onMouseWheel(WPARAM wParam, LPARAM lParam)
 	{
 		shiftScene(iScroll > 0);
 
-		m_wasRightCombined = true;
+		m_mouseState.wasRightCombined = true;
 	}
 	else
 	{
@@ -471,19 +471,19 @@ LRESULT CMainWindow::onMouseWheel(WPARAM wParam, LPARAM lParam)
 /*WM_LBUTTONDOWN*/
 LRESULT CMainWindow::onLButtonDown(WPARAM wParam, LPARAM lParam)
 {
-	::GetCursorPos(&m_lastCursorPos);
+	::GetCursorPos(&m_mouseState.lastCursorPos);
 
-	m_wasLeftPressed = true;
+	m_mouseState.wasLeftPressed = true;
 
 	return 0;
 }
 /*WM_LBUTTONUP*/
 LRESULT CMainWindow::onLButtonUp(WPARAM wParam, LPARAM lParam)
 {
-	if (m_hasLeftBeenDragged)
+	if (m_mouseState.hasLeftBeenDragged)
 	{
-		m_hasLeftBeenDragged = false;
-		m_wasLeftPressed = false;
+		m_mouseState.hasLeftBeenDragged = false;
+		m_mouseState.wasLeftPressed = false;
 
 		return 0;
 	}
@@ -498,15 +498,15 @@ LRESULT CMainWindow::onLButtonUp(WPARAM wParam, LPARAM lParam)
 		input.ki.wVk = VK_DOWN;
 		::SendInput(1, &input, sizeof(input));
 
-		m_wasRightCombined = true;
+		m_mouseState.wasRightCombined = true;
 	}
 
-	if (usKey == 0 && m_wasLeftPressed)
+	if (usKey == 0 && m_mouseState.wasLeftPressed)
 	{
 		POINT pt{};
 		::GetCursorPos(&pt);
-		int iX = m_lastCursorPos.x - pt.x;
-		int iY = m_lastCursorPos.y - pt.y;
+		int iX = m_mouseState.lastCursorPos.x - pt.x;
+		int iY = m_mouseState.lastCursorPos.y - pt.y;
 
 		if (iX == 0 && iY == 0)
 		{
@@ -521,16 +521,16 @@ LRESULT CMainWindow::onLButtonUp(WPARAM wParam, LPARAM lParam)
 		}
 	}
 
-	m_wasLeftPressed = false;
+	m_mouseState.wasLeftPressed = false;
 
 	return 0;
 }
 /*WM_RBUTTONUP*/
 LRESULT CMainWindow::onRButtonUp(WPARAM wParam, LPARAM lParam)
 {
-	if (m_wasRightCombined)
+	if (m_mouseState.wasRightCombined)
 	{
-		m_wasRightCombined = false;
+		m_mouseState.wasRightCombined = false;
 
 		return 0;
 	}
@@ -581,7 +581,7 @@ LRESULT CMainWindow::onMButtonUp(WPARAM wParam, LPARAM lParam)
 	{
 		toggleWindowFrameStyle();
 
-		m_wasRightCombined = true;
+		m_mouseState.wasRightCombined = true;
 	}
 
 	return 0;
@@ -638,7 +638,7 @@ void CMainWindow::menuOnOpenFile()
 	std::wstring selectedFilePath = win_dialogue::SelectOpenFile(L"script file", fileFilter, L"Select EVSC script", m_hWnd);
 	if (!selectedFilePath.empty())
 	{
-		bool bRet = setupScenario(selectedFilePath.c_str());
+		bool bRet = setupScenario(selectedFilePath);
 		if (bRet)
 		{
 			m_scriptFilePaths.clear();
@@ -654,7 +654,7 @@ void CMainWindow::menuOnNextFile()
 
 	++m_nScriptFilePathIndex;
 	if (m_nScriptFilePathIndex >= m_scriptFilePaths.size())m_nScriptFilePathIndex = 0;
-	setupScenario(m_scriptFilePaths[m_nScriptFilePathIndex].c_str());
+	setupScenario(m_scriptFilePaths[m_nScriptFilePathIndex]);
 }
 /*前ファイルに移動*/
 void CMainWindow::menuOnForeFile()
@@ -663,7 +663,7 @@ void CMainWindow::menuOnForeFile()
 
 	--m_nScriptFilePathIndex;
 	if (m_nScriptFilePathIndex >= m_scriptFilePaths.size())m_nScriptFilePathIndex = m_scriptFilePaths.size() - 1;
-	setupScenario(m_scriptFilePaths[m_nScriptFilePathIndex].c_str());
+	setupScenario(m_scriptFilePaths[m_nScriptFilePathIndex]);
 }
 /*音声設定画面呼び出し*/
 void CMainWindow::menuOnAudioSetting()
@@ -719,20 +719,20 @@ void CMainWindow::menuOnSyncImage()
 	}
 }
 /*標題変更*/
-void CMainWindow::changeWindowTitle(const wchar_t* pzTitle)
+void CMainWindow::changeWindowTitle(const wchar_t* windowTitle)
 {
-	const wchar_t* windowTitle = pzTitle;
-	if (windowTitle != nullptr)
+	const wchar_t* truncatedWindowTitle = windowTitle;
+	if (truncatedWindowTitle != nullptr)
 	{
 		for (;;)
 		{
-			const wchar_t* pPos = wcspbrk(windowTitle, L"\\/");
+			const wchar_t* pPos = wcspbrk(truncatedWindowTitle, L"\\/");
 			if (pPos == nullptr)break;
-			windowTitle = pPos + 1;
+			truncatedWindowTitle = pPos + 1;
 		}
 	}
 
-	::SetWindowTextW(m_hWnd, windowTitle == nullptr ? m_defaultWindowName : windowTitle);
+	::SetWindowTextW(m_hWnd, truncatedWindowTitle == nullptr ? m_defaultWindowName : truncatedWindowTitle);
 }
 /*表示形式変更*/
 void CMainWindow::toggleWindowFrameStyle()
@@ -772,10 +772,8 @@ void CMainWindow::updateMenuItemState() const
 	window_menu::EnableMenuItems(window_menu::GetMenuInBar(m_hWnd, MenuBar::kFile), fileMenuIndices, toEnable);
 }
 /*寸劇構築*/
-bool CMainWindow::setupScenario(const wchar_t* scriptFilePath)
+bool CMainWindow::setupScenario(const std::wstring& scriptFilePath)
 {
-	if (scriptFilePath == nullptr)return false;
-
 	clearScenarioData();
 
 	bool hadBeenReady = isPlayReady();
@@ -791,7 +789,7 @@ bool CMainWindow::setupScenario(const wchar_t* scriptFilePath)
 		updatePaintData();
 	}
 
-	changeWindowTitle(bRet ? scriptFilePath : nullptr);
+	changeWindowTitle(bRet ? scriptFilePath.data() : nullptr);
 	if(hadBeenReady != bRet) updateMenuItemState();
 
 	return bRet;
