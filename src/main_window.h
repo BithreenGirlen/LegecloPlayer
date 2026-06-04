@@ -40,7 +40,7 @@ private:
 	LRESULT onDestroy();
 	LRESULT onClose();
 	LRESULT onPaint();
-	LRESULT onSize();
+	LRESULT onSize(WPARAM wParam, LPARAM lParam);
 	LRESULT onKeyDown(WPARAM wParam, LPARAM lParam);
 	LRESULT onKeyUp(WPARAM wParam, LPARAM lParam);
 	LRESULT onCommand(WPARAM wParam, LPARAM lParam);
@@ -141,9 +141,9 @@ private:
 	const adv::PaintDatum* getCurrentPaintData();
 
 	std::map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
-	void storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap>& pD2D1Bitmap);
+	CComPtr<ID2D1Bitmap> getCurrentVideoFrame();
 	void clearStoeredVideoFrame();
-	ID2D1Bitmap* restoreVideoFrame(long long llCurrentTime);
+	D2D1_MATRIX_3X2_F calculateTransformMatrix(const D2D1_SIZE_U& sceneSize);
 
 	std::map<std::wstring, CComPtr<ID2D1Bitmap>> m_imageMap;
 	void createImageMap();

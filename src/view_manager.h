@@ -10,14 +10,20 @@ public:
     ~CViewManager() = default;
 
     void setBaseSize(HWND hRenderTargetWindow, unsigned int width, unsigned int height);
-    void rescale(bool toUpscale);
-    void setOffset(int iX, int iY);
-    void resetZoom();
+    void getBaseSize(unsigned int* width, unsigned int* height);
+
+    void setScale(float fScale);
+    float getScale() const;
+    void rescale(bool upscale);
+
+    void addOffset(int iX, int iY);
+    float offsetX() const;
+    float offsetY() const;
+
+    void resetScale();
+
     void onStyleChanged();
 
-    float getScale() const { return m_fScale; };
-    float getOffsetX() const { return m_fOffsetX; };
-    float getOffsetY() const { return m_fOffsetY; };
 private:
     enum Constants { kBaseWidth = 1280, kBaseHeight = 720 };
 
@@ -32,8 +38,9 @@ private:
     float m_fOffsetY = 0;
 
     void workOutDefaultScale();
-    void resizeWindow();
     void adjustOffset();
+
+    void resizeWindow();
     void requestRedraw() const;
 };
 

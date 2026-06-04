@@ -106,6 +106,8 @@ LRESULT CMainWindow::handleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 		return onCreate(hWnd);
 	case WM_DESTROY:
 		return onDestroy();
+	case WM_SIZE:
+		return onSize(wParam, lParam);
 	case WM_CLOSE:
 		return onClose();
 	case WM_PAINT:
@@ -223,31 +225,21 @@ LRESULT CMainWindow::onPaint()
 
 	m_pD2ImageDrawer->clear();
 
-	bool bRet = false;
 	const adv::PaintDatum* pPaintDatum = getCurrentPaintData();
 	if (pPaintDatum != nullptr)
 	{
-		if (pPaintDatum->isVideo)
+		/* 動画フレームを取得できなかった場合、そのフレームの表示を行わない。 */
+		bool hasDrawn = false;
+		if (pPaintDatum->isVideo) /* 動画 */
 		{
-			CComPtr<ID2D1Bitmap> d2d1Bitmap;
-			long long frameTime = 0;
-			bRet = m_videoTransferor.transferVideoFrame(m_pD2ImageDrawer->getD2DeviceContext(), &d2d1Bitmap, &frameTime);
-			if (bRet)
+			CComPtr<ID2D1Bitmap> pVideoFrame = getCurrentVideoFrame();
+			if (pVideoFrame != nullptr)
 			{
-				bRet = m_pD2ImageDrawer->draw(d2d1Bitmap.p, { m_viewManager.getOffsetX(), m_viewManager.getOffsetY() }, m_viewManager.getScale());
-				if (bRet)
-				{
-					storeVideoFrame(frameTime, d2d1Bitmap);
-				}
-			}
-			else
-			{
-				long long llCurrentTime = m_videoTransferor.getCurrentTimeInMilliSeconds();
-				ID2D1Bitmap* p = restoreVideoFrame(llCurrentTime);
-				if (p != nullptr)
-				{
-					bRet = m_pD2ImageDrawer->draw(p, { m_viewManager.getOffsetX(), m_viewManager.getOffsetY() }, m_viewManager.getScale());
-				}
+				const D2D1_SIZE_U sceneSize = pVideoFrame->GetPixelSize();
+				const D2D1_MATRIX_3X2_F transformMatrix = calculateTransformMatrix(sceneSize);
+				m_pD2ImageDrawer->getD2DeviceContext()->SetTransform(transformMatrix);
+				hasDrawn = m_pD2ImageDrawer->draw(pVideoFrame);
+				m_pD2ImageDrawer->getD2DeviceContext()->SetTransform(D2D1::Matrix3x2F::Identity());
 			}
 		}
 		else /* 静止画 */
@@ -255,18 +247,23 @@ LRESULT CMainWindow::onPaint()
 			const auto& iter = m_imageMap.find(pPaintDatum->wstrFilePath);
 			if (iter != m_imageMap.cend())
 			{
-				bRet = m_pD2ImageDrawer->draw(iter->second.p, { m_viewManager.getOffsetX(), m_viewManager.getOffsetY() }, m_viewManager.getScale());
+				const D2D1_SIZE_U sceneSize = iter->second->GetPixelSize();
+				const D2D1_MATRIX_3X2_F transformMatrix = calculateTransformMatrix(sceneSize);
+				m_pD2ImageDrawer->getD2DeviceContext()->SetTransform(transformMatrix);
+				hasDrawn = m_pD2ImageDrawer->draw(iter->second);
+				m_pD2ImageDrawer->getD2DeviceContext()->SetTransform(D2D1::Matrix3x2F::Identity());
 			}
 		}
-	}
 
-	if (bRet)
-	{
-		if (!m_isTextHidden && m_pD2TextWriter != nullptr)
+		if (hasDrawn)
 		{
-			m_pD2TextWriter->outLinedDraw(m_formattedText.c_str(), m_formattedText.size());
+			if (!m_isTextHidden)
+			{
+				m_pD2TextWriter->outLinedDraw(m_formattedText.c_str(), m_formattedText.size());
+			}
+
+			m_pD2ImageDrawer->display();
 		}
-		m_pD2ImageDrawer->display();
 	}
 
 	::EndPaint(m_hWnd, &ps);
@@ -274,8 +271,12 @@ LRESULT CMainWindow::onPaint()
 	return 0;
 }
 /*WM_SIZE*/
-LRESULT CMainWindow::onSize()
+LRESULT CMainWindow::onSize(WPARAM wParam, LPARAM lParam)
 {
+	if (m_pD2ImageDrawer != nullptr)
+	{
+		m_pD2ImageDrawer->onResize();
+	}
 
 	return 0;
 }
@@ -401,7 +402,7 @@ LRESULT CMainWindow::onMouseMove(WPARAM wParam, LPARAM lParam)
 			int iX = m_mouseState.lastCursorPos.x - pt.x;
 			int iY = m_mouseState.lastCursorPos.y - pt.y;
 
-			m_viewManager.setOffset(iX, iY);
+			m_viewManager.addOffset(iX, iY);
 			updateScreen();
 		}
 
@@ -542,7 +543,7 @@ LRESULT CMainWindow::onMButtonUp(WPARAM wParam, LPARAM lParam)
 	WORD pressedKeyState = LOWORD(wParam);
 	if (pressedKeyState == 0)
 	{
-		m_viewManager.resetZoom();
+		m_viewManager.resetScale();
 	}
 	else if (pressedKeyState == MK_RBUTTON)
 	{
@@ -703,11 +704,19 @@ void CMainWindow::toggleWindowFrameStyle()
 
 	if (m_isFramelessWindow)
 	{
+		MONITORINFO monitorInfo{.cbSize = sizeof(MONITORINFO) };
+		if (HMONITOR hMonitor = ::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST); hMonitor != nullptr)
+		{
+			/* Nothing can be done even if failed. */
+			::GetMonitorInfoW(hMonitor, &monitorInfo);
+		}
+
 		RECT rect;
 		::GetWindowRect(m_hWnd, &rect);
 
 		::SetWindowLong(m_hWnd, GWL_STYLE, lStyle & ~WS_CAPTION & ~WS_SYSMENU);
-		::SetWindowPos(m_hWnd, nullptr, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER);
+		/* If GetMonitorInfoW failed, rcMonitor.left and rcMonitor.top remains zero, namely the origin of primary monitor. */
+		::SetWindowPos(m_hWnd, nullptr, monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER);
 		::SetMenu(m_hWnd, nullptr);
 	}
 	else
@@ -897,29 +906,58 @@ const adv::PaintDatum* CMainWindow::getCurrentPaintData()
 
 	return nullptr;
 }
-/*転送動画溜め置き*/
-void CMainWindow::storeVideoFrame(long long llCurrentTime, CComPtr<ID2D1Bitmap>& pD2D1Bitmap)
+
+CComPtr<ID2D1Bitmap> CMainWindow::getCurrentVideoFrame()
 {
-	constexpr int kMaxBufferMilliSeconds = 200;
-	if (llCurrentTime < kMaxBufferMilliSeconds)
+	/* 最大バッファ時間までの取得フレームは保存しておき、ループ再生時にフレーム待ちが発生しないにしておく */
+
+	CComPtr<ID2D1Bitmap> pD2d1Bitmap;
+	long long frameTime = 0;
+	bool bRet = m_videoTransferor.transferVideoFrame(m_pD2ImageDrawer->getD2DeviceContext(), &pD2d1Bitmap, &frameTime);
+	if (bRet)
 	{
-		m_storedVideoFrames.insert({ llCurrentTime, std::move(pD2D1Bitmap) });
+		static constexpr long long kMaxBufferMilliSeconds = 200;
+		if (frameTime < kMaxBufferMilliSeconds)
+		{
+			const auto& storedFramePair = m_storedVideoFrames.insert({ frameTime, std::move(pD2d1Bitmap) });
+			return storedFramePair.first->second;
+		}
 	}
+	else
+	{
+		frameTime = m_videoTransferor.getCurrentTimeInMilliSeconds();
+		const auto& storedFrame = m_storedVideoFrames.find(frameTime);
+		if (storedFrame != m_storedVideoFrames.cend())
+		{
+			return storedFrame->second;
+		}
+	}
+
+	return pD2d1Bitmap;
 }
-/*溜め置き動画消去*/
+/* 溜め置き動画消去 */
 void CMainWindow::clearStoeredVideoFrame()
 {
 	m_storedVideoFrames.clear();
 }
-/*溜め置き動画取り出し*/
-ID2D1Bitmap* CMainWindow::restoreVideoFrame(long long llCurrentTime)
+/* 変形行列計算 */
+D2D1_MATRIX_3X2_F CMainWindow::calculateTransformMatrix(const D2D1_SIZE_U& sceneSize)
 {
-	const auto& iter = m_storedVideoFrames.find(llCurrentTime);
-	if (iter != m_storedVideoFrames.cend())
-	{
-		return iter->second.p;
-	}
-	return nullptr;
+	RECT rc;
+	::GetClientRect(m_hWnd, &rc);
+
+	int targetWidth = rc.right - rc.left;
+	int targetHeight = rc.bottom - rc.top;
+
+	const float fScale = m_viewManager.getScale();
+	const float fX = (sceneSize.width * fScale - targetWidth) / 2 + m_viewManager.offsetX() / 2;
+	const float fY = (sceneSize.height * fScale - targetHeight) / 2 + m_viewManager.offsetY() / 2;
+
+	const D2D1_MATRIX_3X2_F scaleMatrix = D2D1::Matrix3x2F::Scale(fScale, fScale);
+	const D2D1_MATRIX_3X2_F translateMatrix = D2D1::Matrix3x2F::Translation(-fX, -fY);
+	const D2D1_MATRIX_3X2_F transformMatrix = scaleMatrix * translateMatrix;
+
+	return transformMatrix;
 }
 /*静画メモリ取り込み*/
 void CMainWindow::createImageMap()
@@ -945,7 +983,7 @@ void CMainWindow::createImageMap()
 						{
 							const D2D1_SIZE_F& size = pD2d1Bitmap->GetSize();
 							m_viewManager.setBaseSize(m_hWnd, static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height));
-							m_viewManager.resetZoom();
+							m_viewManager.resetScale();
 
 							m_hasFirstPaintDataBeenLoaded = true;
 						}
@@ -991,7 +1029,7 @@ void CMainWindow::onVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
 			if (bRet)
 			{
 				m_viewManager.setBaseSize(m_hWnd, ulWidth, ulHeight);
-				m_viewManager.resetZoom();
+				m_viewManager.resetScale();
 
 				m_hasFirstPaintDataBeenLoaded = true;
 			}
