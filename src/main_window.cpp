@@ -262,7 +262,10 @@ LRESULT CMainWindow::onPaint()
 		{
 			if (!m_sceneState.isTextHidden)
 			{
-				m_pD2TextWriter->outLinedDraw(m_formattedText.c_str(), m_formattedText.size());
+				if (m_pSceneTextBitmap != nullptr)
+				{
+					m_pD2ImageDrawer->draw(m_pSceneTextBitmap);
+				}
 			}
 
 			m_pD2ImageDrawer->display();
@@ -280,6 +283,8 @@ LRESULT CMainWindow::onSize(WPARAM wParam, LPARAM lParam)
 	{
 		m_pD2ImageDrawer->onResize();
 	}
+
+	recreateSceneTextBitmap();
 
 	return 0;
 }
@@ -406,7 +411,6 @@ LRESULT CMainWindow::onMouseMove(WPARAM wParam, LPARAM lParam)
 			int iY = m_mouseState.lastCursorPos.y - pt.y;
 
 			m_viewManager.addOffset(iX, iY);
-			updateScreen();
 		}
 
 		m_mouseState.lastCursorPos = pt;
@@ -877,6 +881,8 @@ void CMainWindow::updateText()
 			::swprintf_s(buffer, L"%zu/%zu", nTextIndex + 1, m_textData.size());
 			m_formattedText += buffer;
 
+			recreateSceneTextBitmap();
+
 			if (!t.wstrVoicePath.empty())
 			{
 				m_audioPlayer.play(t.wstrVoicePath.c_str());
@@ -1003,6 +1009,42 @@ void CMainWindow::createImageMap()
 void CMainWindow::clearImageMap()
 {
 	m_imageMap.clear();
+}
+
+void CMainWindow::recreateSceneTextBitmap()
+{
+	if (!isPlayReady())return;
+
+	RECT rc;
+	::GetClientRect(m_hWnd, &rc);
+	const float wrapWidth = static_cast<float>(rc.right - rc.left);
+
+	m_pSceneTextBitmap.Release();
+	drawTextOnBitmap(m_pD2TextWriter, m_formattedText.c_str(), m_formattedText.size(), &m_pSceneTextBitmap, wrapWidth);
+}
+
+void CMainWindow::drawTextOnBitmap(CD2TextWriter* pTextWriter, const wchar_t* text, size_t textLength, ID2D1Bitmap1** targetBitmap, float wrapWidth)
+{
+	if (m_pD2ImageDrawer == nullptr || pTextWriter == nullptr || targetBitmap == nullptr)return;
+
+	const D2D1_SIZE_F textBounds = pTextWriter->calculateTextBounds(text, textLength, wrapWidth);
+	const D2D1_SIZE_U bitmapSize{ static_cast<UINT>(textBounds.width), static_cast<UINT>(textBounds.height) };
+
+	/* Do not specify DPI here. */
+	const D2D1_BITMAP_PROPERTIES1 bitmapProperties1 = D2D1::BitmapProperties1(
+		D2D1_BITMAP_OPTIONS::D2D1_BITMAP_OPTIONS_TARGET,
+		D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED));
+
+	HRESULT hr = m_pD2ImageDrawer->getD2DeviceContext()->CreateBitmap(bitmapSize, nullptr, 0, bitmapProperties1, targetBitmap);
+	if (SUCCEEDED(hr))
+	{
+		CComPtr<ID2D1Image> pPreviousRendererTarget;
+		m_pD2ImageDrawer->getD2DeviceContext()->GetTarget(&pPreviousRendererTarget);
+
+		m_pD2ImageDrawer->getD2DeviceContext()->SetTarget(*targetBitmap);
+		pTextWriter->outLinedDraw(text, textLength, wrapWidth);
+		m_pD2ImageDrawer->getD2DeviceContext()->SetTarget(pPreviousRendererTarget);
+	}
 }
 /*IMFMediaEngineNotify::EventNotify*/
 void CMainWindow::onAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)

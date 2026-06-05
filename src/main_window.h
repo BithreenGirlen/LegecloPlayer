@@ -137,6 +137,7 @@ private:
 	std::map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
 	std::map<std::wstring, CComPtr<ID2D1Bitmap>> m_imageMap;
 	std::wstring m_formattedText;
+	CComPtr<ID2D1Bitmap1> m_pSceneTextBitmap;
 
 	bool isPlayReady() const;
 
@@ -157,6 +158,9 @@ private:
 
 	void createImageMap();
 	void clearImageMap();
+
+	void recreateSceneTextBitmap();
+	void drawTextOnBitmap(CD2TextWriter* pTextWriter, const wchar_t* text, size_t textLength, ID2D1Bitmap1** targetBitmap, float wrapWidth = 0.f);
 
 	void onAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
 	void onVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
