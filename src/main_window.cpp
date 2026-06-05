@@ -172,6 +172,7 @@ LRESULT CMainWindow::onCreate(HWND hWnd)
 
 	m_pD2TextWriter = new CD2TextWriter(m_pD2ImageDrawer->getD2Factory(), m_pD2ImageDrawer->getD2DeviceContext());
 	m_pD2TextWriter->setupOutLinedDrawing(L"C:\\Windows\\Fonts\\yumindb.ttf");
+	m_pD2TextWriter->onDpiChanged(::GetDpiForWindow(m_hWnd));
 
 	m_audioPlayer.setPlaybackWindow(m_hWnd, EventMessage::kAudioPlayer);
 
