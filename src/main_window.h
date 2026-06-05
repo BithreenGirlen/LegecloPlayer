@@ -27,7 +27,7 @@ public:
 	bool create(HINSTANCE hInstance);
 	int messageLoop();
 
-	HWND GetHwnd()const { return m_hWnd;}
+	HWND GetHwnd()const { return m_hWnd; }
 private:
 	const wchar_t* m_className = L"Legeclo player window";
 	const wchar_t* m_defaultWindowName = L"Legeclo player";
@@ -63,7 +63,7 @@ private:
 	};
 	struct MenuBar { enum { kFile, kSetting, kImage }; };
 	struct EventMessage { enum { kAudioPlayer = WM_USER + 1, kVideoPlayer }; };
-	struct Timer { enum { kText = 1}; };
+	struct Timer { enum { kText = 1 }; };
 
 	struct MouseState
 	{
@@ -73,10 +73,15 @@ private:
 		POINT lastCursorPos{};
 	};
 
+	struct WindowStyle
+	{
+		bool isFrameless = false;
+	};
+
 	MouseState m_mouseState;
+	WindowStyle m_windowStyle;
 
 	HMENU m_hMenuBar = nullptr;
-	bool m_isFramelessWindow = false;
 
 	std::vector<std::wstring> m_scriptFilePaths;
 	size_t m_nScriptFilePathIndex = 0;
@@ -111,21 +116,27 @@ private:
 	CFontSettingDialogue m_fontSettingDiallogue;
 
 	std::vector<adv::TextDatum> m_textData;
-
 	std::vector<adv::PaintDatum> m_paintData;
 	size_t m_nPaintIndex = 0;
 	size_t m_nLastVideoIndex = 0;
 
 	std::vector<adv::SceneDatum> m_sceneData;
 	size_t m_nSceneIndex = 0;
-
 	std::vector<adv::LabelDatum> m_labelData;
 
-	std::wstring m_formattedText;
+	struct SceneState
+	{
+		bool hasFirstPaintDataBeenLoaded = false;
+		bool isTextHidden = false;
+		bool isImageSynced = true;
+	};
 
-	bool m_hasFirstPaintDataBeenLoaded = false;
-	bool m_isTextHidden = false;
-	bool m_isImageSynced = true;
+	SceneState m_sceneState;
+
+	CWinTimer m_videoTimer;
+	std::map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
+	std::map<std::wstring, CComPtr<ID2D1Bitmap>> m_imageMap;
+	std::wstring m_formattedText;
 
 	bool isPlayReady() const;
 
@@ -139,20 +150,16 @@ private:
 	void autoTexting();
 
 	const adv::PaintDatum* getCurrentPaintData();
-
-	std::map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
-	CComPtr<ID2D1Bitmap> getCurrentVideoFrame();
-	void clearStoeredVideoFrame();
 	D2D1_MATRIX_3X2_F calculateTransformMatrix(const D2D1_SIZE_U& sceneSize);
 
-	std::map<std::wstring, CComPtr<ID2D1Bitmap>> m_imageMap;
+	CComPtr<ID2D1Bitmap> getCurrentVideoFrame();
+	void clearStoeredVideoFrame();
+
 	void createImageMap();
 	void clearImageMap();
 
 	void onAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
 	void onVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
-
-	CWinTimer m_videoTimer;
 };
 
 #endif //MAIN_WINDOW_H_

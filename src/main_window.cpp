@@ -154,7 +154,7 @@ LRESULT CMainWindow::onCreate(HWND hWnd)
 
 	initialiseMenuBar();
 	updateMenuItemState();
-	window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kSyncImage, m_isImageSynced);
+	window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kSyncImage, m_sceneState.isImageSynced);
 
 	const auto TimerCallback = [](void* pUserData)
 		-> void
@@ -238,6 +238,7 @@ LRESULT CMainWindow::onPaint()
 			{
 				const D2D1_SIZE_U sceneSize = pVideoFrame->GetPixelSize();
 				const D2D1_MATRIX_3X2_F transformMatrix = calculateTransformMatrix(sceneSize);
+
 				m_pD2ImageDrawer->getD2DeviceContext()->SetTransform(transformMatrix);
 				hasDrawn = m_pD2ImageDrawer->draw(pVideoFrame);
 				m_pD2ImageDrawer->getD2DeviceContext()->SetTransform(D2D1::Matrix3x2F::Identity());
@@ -250,6 +251,7 @@ LRESULT CMainWindow::onPaint()
 			{
 				const D2D1_SIZE_U sceneSize = iter->second->GetPixelSize();
 				const D2D1_MATRIX_3X2_F transformMatrix = calculateTransformMatrix(sceneSize);
+
 				m_pD2ImageDrawer->getD2DeviceContext()->SetTransform(transformMatrix);
 				hasDrawn = m_pD2ImageDrawer->draw(iter->second);
 				m_pD2ImageDrawer->getD2DeviceContext()->SetTransform(D2D1::Matrix3x2F::Identity());
@@ -258,7 +260,7 @@ LRESULT CMainWindow::onPaint()
 
 		if (hasDrawn)
 		{
-			if (!m_isTextHidden)
+			if (!m_sceneState.isTextHidden)
 			{
 				m_pD2TextWriter->outLinedDraw(m_formattedText.c_str(), m_formattedText.size());
 			}
@@ -321,7 +323,7 @@ LRESULT CMainWindow::onKeyUp(WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	case 'T':
-		m_isTextHidden ^= true;
+		m_sceneState.isTextHidden ^= true;
 		updateScreen();
 		break;
 	}
@@ -460,7 +462,7 @@ LRESULT CMainWindow::onLButtonUp(WPARAM wParam, LPARAM lParam)
 	WORD pressedKeyState = LOWORD(wParam);
 	if (pressedKeyState == MK_RBUTTON)
 	{
-		if (m_isFramelessWindow)
+		if (m_windowStyle.isFrameless)
 		{
 			::PostMessage(m_hWnd, WM_SYSCOMMAND, SC_MOVE, 0);
 			INPUT input{};
@@ -671,10 +673,10 @@ void CMainWindow::menuOnPauseVideo()
 }
 void CMainWindow::menuOnSyncImage()
 {
-	bool bRet = window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kSyncImage, !m_isImageSynced);
+	bool bRet = window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kSyncImage, !m_sceneState.isImageSynced);
 	if (bRet)
 	{
-		m_isImageSynced ^= true;
+		m_sceneState.isImageSynced ^= true;
 		updatePaintData();
 	}
 }
@@ -701,9 +703,9 @@ void CMainWindow::toggleWindowFrameStyle()
 
 	LONG lStyle = ::GetWindowLong(m_hWnd, GWL_STYLE);
 
-	m_isFramelessWindow ^= true;
+	m_windowStyle.isFrameless ^= true;
 
-	if (m_isFramelessWindow)
+	if (m_windowStyle.isFrameless)
 	{
 		MONITORINFO monitorInfo{.cbSize = sizeof(MONITORINFO) };
 		if (HMONITOR hMonitor = ::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST); hMonitor != nullptr)
@@ -778,7 +780,7 @@ void CMainWindow::clearScenarioData()
 	m_videoTimer.end();
 	clearStoeredVideoFrame();
 
-	m_hasFirstPaintDataBeenLoaded = false;
+	m_sceneState.hasFirstPaintDataBeenLoaded = false;
 
 	m_formattedText.clear();
 }
@@ -795,7 +797,7 @@ bool CMainWindow::isPlayReady() const
 /*表示図画送り・戻し*/
 void CMainWindow::shiftPaintData()
 {
-	if (!m_isImageSynced)
+	if (!m_sceneState.isImageSynced)
 	{
 		++m_nPaintIndex;
 		if (m_nPaintIndex >= m_paintData.size())m_nPaintIndex = 0;
@@ -894,7 +896,7 @@ const adv::PaintDatum* CMainWindow::getCurrentPaintData()
 {
 	if (m_nSceneIndex < m_sceneData.size())
 	{
-		if (m_isImageSynced)
+		if (m_sceneState.isImageSynced)
 		{
 			m_nPaintIndex = m_sceneData[m_nSceneIndex].nPaintIndex;
 		}
@@ -906,6 +908,25 @@ const adv::PaintDatum* CMainWindow::getCurrentPaintData()
 	}
 
 	return nullptr;
+}
+/* 変形行列計算 */
+D2D1_MATRIX_3X2_F CMainWindow::calculateTransformMatrix(const D2D1_SIZE_U& sceneSize)
+{
+	RECT rc;
+	::GetClientRect(m_hWnd, &rc);
+
+	int targetWidth = rc.right - rc.left;
+	int targetHeight = rc.bottom - rc.top;
+
+	const float fScale = m_viewManager.getScale();
+	const float fX = (sceneSize.width * fScale - targetWidth) / 2 + m_viewManager.offsetX() / 2;
+	const float fY = (sceneSize.height * fScale - targetHeight) / 2 + m_viewManager.offsetY() / 2;
+
+	const D2D1_MATRIX_3X2_F scaleMatrix = D2D1::Matrix3x2F::Scale(fScale, fScale);
+	const D2D1_MATRIX_3X2_F translateMatrix = D2D1::Matrix3x2F::Translation(-fX, -fY);
+	const D2D1_MATRIX_3X2_F transformMatrix = scaleMatrix * translateMatrix;
+
+	return transformMatrix;
 }
 
 CComPtr<ID2D1Bitmap> CMainWindow::getCurrentVideoFrame()
@@ -941,29 +962,11 @@ void CMainWindow::clearStoeredVideoFrame()
 {
 	m_storedVideoFrames.clear();
 }
-/* 変形行列計算 */
-D2D1_MATRIX_3X2_F CMainWindow::calculateTransformMatrix(const D2D1_SIZE_U& sceneSize)
-{
-	RECT rc;
-	::GetClientRect(m_hWnd, &rc);
-
-	int targetWidth = rc.right - rc.left;
-	int targetHeight = rc.bottom - rc.top;
-
-	const float fScale = m_viewManager.getScale();
-	const float fX = (sceneSize.width * fScale - targetWidth) / 2 + m_viewManager.offsetX() / 2;
-	const float fY = (sceneSize.height * fScale - targetHeight) / 2 + m_viewManager.offsetY() / 2;
-
-	const D2D1_MATRIX_3X2_F scaleMatrix = D2D1::Matrix3x2F::Scale(fScale, fScale);
-	const D2D1_MATRIX_3X2_F translateMatrix = D2D1::Matrix3x2F::Translation(-fX, -fY);
-	const D2D1_MATRIX_3X2_F transformMatrix = scaleMatrix * translateMatrix;
-
-	return transformMatrix;
-}
 /*静画メモリ取り込み*/
 void CMainWindow::createImageMap()
 {
 	if (m_pD2ImageDrawer == nullptr)return;
+
 	ID2D1DeviceContext* const pD2d1DeviceContext = m_pD2ImageDrawer->getD2DeviceContext();
 	for (const auto& paintDatum : m_paintData)
 	{
@@ -980,13 +983,13 @@ void CMainWindow::createImageMap()
 					HRESULT hr = pD2d1DeviceContext->CreateBitmapFromWicBitmap(pWicBitmap, D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)), &pD2d1Bitmap);
 					if (SUCCEEDED(hr))
 					{
-						if (!m_hasFirstPaintDataBeenLoaded)
+						if (!m_sceneState.hasFirstPaintDataBeenLoaded)
 						{
 							const D2D1_SIZE_F& size = pD2d1Bitmap->GetSize();
 							m_viewManager.setBaseSize(m_hWnd, static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height));
 							m_viewManager.resetScale();
 
-							m_hasFirstPaintDataBeenLoaded = true;
+							m_sceneState.hasFirstPaintDataBeenLoaded = true;
 						}
 
 						m_imageMap.insert({ paintDatum.wstrFilePath, std::move(pD2d1Bitmap) });
@@ -1022,7 +1025,7 @@ void CMainWindow::onVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
 	switch (ulEvent)
 	{
 	case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
-		if (!m_hasFirstPaintDataBeenLoaded)
+		if (!m_sceneState.hasFirstPaintDataBeenLoaded)
 		{
 			unsigned long ulWidth = 0;
 			unsigned long ulHeight = 0;
@@ -1032,7 +1035,7 @@ void CMainWindow::onVideoPlayerEvent(unsigned long ulEvent, DWORD_PTR param1)
 				m_viewManager.setBaseSize(m_hWnd, ulWidth, ulHeight);
 				m_viewManager.resetScale();
 
-				m_hasFirstPaintDataBeenLoaded = true;
+				m_sceneState.hasFirstPaintDataBeenLoaded = true;
 			}
 		}
 		break;
