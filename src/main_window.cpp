@@ -1027,7 +1027,10 @@ void CMainWindow::drawTextOnBitmap(CD2TextWriter* pTextWriter, const wchar_t* te
 {
 	if (m_pD2ImageDrawer == nullptr || pTextWriter == nullptr || targetBitmap == nullptr)return;
 
-	const D2D1_SIZE_F textBounds = pTextWriter->calculateTextBounds(text, textLength, wrapWidth);
+	D2D1_SIZE_F textBounds = pTextWriter->calculateTextBounds(text, textLength, wrapWidth);
+	const D2D_POINT_2F textOffset = { pTextWriter->getThickness(), pTextWriter->getThickness() };
+	textBounds.width += textOffset.x;
+	textBounds.height += textOffset.y;
 	const D2D1_SIZE_U bitmapSize{ static_cast<UINT>(textBounds.width), static_cast<UINT>(textBounds.height) };
 
 	/* Do not specify DPI here. */
@@ -1042,7 +1045,7 @@ void CMainWindow::drawTextOnBitmap(CD2TextWriter* pTextWriter, const wchar_t* te
 		m_pD2ImageDrawer->getD2DeviceContext()->GetTarget(&pPreviousRendererTarget);
 
 		m_pD2ImageDrawer->getD2DeviceContext()->SetTarget(*targetBitmap);
-		pTextWriter->outLinedDraw(text, textLength, wrapWidth);
+		pTextWriter->outLinedDraw(text, textLength, wrapWidth, textOffset);
 		m_pD2ImageDrawer->getD2DeviceContext()->SetTarget(pPreviousRendererTarget);
 	}
 }
