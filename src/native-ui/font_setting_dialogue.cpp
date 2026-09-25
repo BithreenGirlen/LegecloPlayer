@@ -18,12 +18,14 @@ CFontSettingDialogue::~CFontSettingDialogue()
 	}
 }
 
-HWND CFontSettingDialogue::open(HINSTANCE hInstance, HWND hWndParent, const wchar_t* windowName, void* pTextWriter)
+HWND CFontSettingDialogue::open(HINSTANCE hInstance, HWND hWndParent, const wchar_t* windowName, void* pTextWriter, void (*pFontChangeCallback)(void* pUserDatum, FontCallbackDatum* pFontCallbackDatum), void* pCallbackUserDatum)
 {
 	CDialogueTemplate dialogueTemplate;
 	dialogueTemplate.setWindowSize(160, 160);
 
 	m_pTextWriter = pTextWriter;
+	m_pFontChangeCallback = pFontChangeCallback;
+	m_pCallbackUserDatum = pCallbackUserDatum;
 
 	return ::CreateDialogIndirectParam(hInstance, (LPCDLGTEMPLATE)dialogueTemplate.generate(windowName), hWndParent, (DLGPROC)DialogProc, (LPARAM)this);
 }
@@ -278,10 +280,10 @@ void CFontSettingDialogue::onApplyButton()
 	std::wstring fontFamilyName = m_fontNameComboBox.getSelectedItemText();
 	if (fontFamilyName.empty())return;
 
-	bool bold = m_boldCheckButton.isChecked();
-	bool italic = m_italicCheckButton.isChecked();
-	float fontSize = static_cast<float>(m_fontSizeSlider.getPosition());
-	float thickness = m_fontThicknessSlider.getPosition();
+	const bool bold = m_boldCheckButton.isChecked();
+	const bool italic = m_italicCheckButton.isChecked();
+	const float fontSize = static_cast<float>(m_fontSizeSlider.getPosition());
+	const float thickness = m_fontThicknessSlider.getPosition();
 
 	std::vector<std::wstring> filePaths = m_winFont.findFontFilePaths(fontFamilyName.c_str(), bold, italic);
 	if (filePaths.empty())return;
@@ -292,6 +294,22 @@ void CFontSettingDialogue::onApplyButton()
 	bRet &= pD2TextWriter->setupOutLinedDrawing(filePaths[0].c_str(), bold, italic, fontSize, thickness);
 	if (bRet)
 	{
+		if (m_pFontChangeCallback != nullptr)
+		{
+			FontCallbackDatum fontCallbackdatum
+			{
+				fontFamilyName.c_str(),
+				m_winFont.getLocaleName(),
+				filePaths[0].c_str(),
+				fontSize,
+				thickness,
+				bold,
+				italic
+			};
+
+			m_pFontChangeCallback(m_pCallbackUserDatum, &fontCallbackdatum);
+		}
+
 		::InvalidateRect(::GetParent(m_hWnd), nullptr, TRUE);
 	}
 }

@@ -156,7 +156,9 @@ LRESULT CMainWindow::onCreate(HWND hWnd)
 	updateMenuItemState();
 	window_menu::SetMenuCheckState(window_menu::GetMenuInBar(m_hWnd, MenuBar::kImage), Menu::kSyncImage, m_sceneState.isImageSynced);
 
-	const auto TimerCallback = [](void* pUserData)
+	static constexpr wchar_t s_defualtFontFilePath[] = L"C:\\Windows\\Fonts\\yumindb.ttf";
+
+	static const auto TimerCallback = [](void* pUserData)
 		-> void
 		{
 			CMainWindow* pThis = static_cast<CMainWindow*>(pUserData);
@@ -170,14 +172,19 @@ LRESULT CMainWindow::onCreate(HWND hWnd)
 
 	m_pD2ImageDrawer = new CD2ImageDrawer(m_hWnd);
 
-	m_pD2TextWriter = new CD2TextWriter(m_pD2ImageDrawer->getD2Factory(), m_pD2ImageDrawer->getD2DeviceContext());
-	m_pD2TextWriter->setupOutLinedDrawing(L"C:\\Windows\\Fonts\\yumindb.ttf");
-	m_pD2TextWriter->onDpiChanged(::GetDpiForWindow(m_hWnd));
+	m_pSceneTextWriter = new CD2TextWriter(m_pD2ImageDrawer->getD2Factory(), m_pD2ImageDrawer->getD2DeviceContext());
+	m_pSceneTextWriter->setupOutLinedDrawing(s_defualtFontFilePath);
+	m_pSceneTextWriter->onDpiChanged(::GetDpiForWindow(m_hWnd));
 
 	m_audioPlayer.setPlaybackWindow(m_hWnd, EventMessage::kAudioPlayer);
 
 	m_videoTransferor.setPlaybackWindow(m_hWnd, EventMessage::kVideoPlayer);
 	m_videoTransferor.setLoop(true);
+
+	m_pHelpTextWriter = new CD2TextWriter(m_pD2ImageDrawer->getD2Factory(), m_pD2ImageDrawer->getD2DeviceContext());
+	m_pHelpTextWriter->setupOutLinedDrawing(s_defualtFontFilePath, false, false, m_pSceneTextWriter->getFontSize() / 2.f);
+	m_pHelpTextWriter->onDpiChanged(::GetDpiForWindow(m_hWnd));
+	recreateHelpTextBitmap();
 
 	return 0;
 }
@@ -195,10 +202,16 @@ LRESULT CMainWindow::onClose()
 
 	::KillTimer(m_hWnd, Timer::kText);
 
-	if (m_pD2TextWriter != nullptr)
+	if (m_pHelpTextWriter != nullptr)
 	{
-		delete m_pD2TextWriter;
-		m_pD2TextWriter = nullptr;
+		delete m_pHelpTextWriter;
+		m_pHelpTextWriter = nullptr;
+	}
+
+	if (m_pSceneTextWriter != nullptr)
+	{
+		delete m_pSceneTextWriter;
+		m_pSceneTextWriter = nullptr;
 	}
 
 	if (m_pD2ImageDrawer != nullptr)
@@ -218,7 +231,7 @@ LRESULT CMainWindow::onPaint()
 	PAINTSTRUCT ps;
 	HDC hdc = ::BeginPaint(m_hWnd, &ps);
 
-	if (m_pD2ImageDrawer == nullptr || m_pD2TextWriter == nullptr || m_nPaintIndex >= m_paintData.size())
+	if (m_pD2ImageDrawer == nullptr || m_nPaintIndex >= m_paintData.size())
 	{
 		::EndPaint(m_hWnd, &ps);
 		return 0;
@@ -260,6 +273,26 @@ LRESULT CMainWindow::onPaint()
 
 		if (hasDrawn)
 		{
+			if (!m_sceneState.isHelpTextHidden)
+			{
+				if (m_pHelpTextBitmap != nullptr)
+				{
+					/* 
+					 * This results in retrieving window size twice because
+					 * calculateTransformMatrix has already called it.
+					 */
+					RECT rc;
+					::GetClientRect(m_hWnd, &rc);
+
+					int targetWidth = rc.right - rc.left;
+					int targetHeight = rc.bottom - rc.top;
+
+					D2D1_SIZE_U helpTextSize = m_pHelpTextBitmap->GetPixelSize();
+					D2D_POINT_2F textOffset{ 0, static_cast<float>(targetHeight - helpTextSize.height) };
+					m_pD2ImageDrawer->draw(m_pHelpTextBitmap, &textOffset);
+				}
+			}
+
 			if (!m_sceneState.isTextHidden)
 			{
 				if (m_pSceneTextBitmap != nullptr)
@@ -321,11 +354,23 @@ LRESULT CMainWindow::onKeyUp(WPARAM wParam, LPARAM lParam)
 		menuOnNextFile();
 		break;
 	case 'C':
-		if (m_pD2TextWriter != nullptr)
+		if (m_pSceneTextWriter != nullptr)
 		{
-			m_pD2TextWriter->toggleTextColour();
-			updateScreen();
+			m_pSceneTextWriter->toggleTextColour();
+			recreateSceneTextBitmap();
 		}
+
+		if (m_pHelpTextWriter != nullptr)
+		{
+			m_pHelpTextWriter->toggleTextColour();
+			recreateHelpTextBitmap();
+		}
+
+		updateScreen();
+		break;
+	case 'H':
+		m_sceneState.isHelpTextHidden ^= true;
+		updateScreen();
 		break;
 	case 'T':
 		m_sceneState.isTextHidden ^= true;
@@ -610,7 +655,7 @@ void CMainWindow::initialiseMenuBar()
 void CMainWindow::menuOnOpenFile()
 {
 	constexpr wchar_t fileFilter[] = L"cs_*2.evsc;cs_*3.evsc";
-	std::wstring selectedFilePath = win_dialogue::SelectOpenFile(L"script file", fileFilter, L"Select EVSC script", m_hWnd);
+	std::wstring selectedFilePath = win_dialogue::SelectOpenFile(L"script file", fileFilter, L"Select evsc file under gamedata/adv/scenario fodler", m_hWnd);
 	if (!selectedFilePath.empty())
 	{
 		bool bRet = setupScenario(selectedFilePath);
@@ -657,7 +702,21 @@ void CMainWindow::menuOnFontSetting()
 {
 	if (m_fontSettingDiallogue.getHwnd() == nullptr)
 	{
-		HWND hWnd = m_fontSettingDiallogue.open(m_hInstance, m_hWnd, L"Font", m_pD2TextWriter);
+		static const auto FontChangeCallback = [](void* pUserDatum, CFontSettingDialogue::FontCallbackDatum* pFontCallbackDatum)
+			-> void
+			{
+				CMainWindow* pThis = static_cast<CMainWindow*>(pUserDatum);
+				if (pThis != nullptr)
+				{
+					pThis->m_pHelpTextWriter->setupOutLinedDrawing(pFontCallbackDatum->fontFilePath, false, false, pFontCallbackDatum->fontSize / 2.f);
+
+					pThis->recreateSceneTextBitmap();
+					pThis->recreateHelpTextBitmap();
+					pThis->updateScreen();
+				}
+			};
+
+		HWND hWnd = m_fontSettingDiallogue.open(m_hInstance, m_hWnd, L"Font", m_pSceneTextWriter, FontChangeCallback, this);
 		::ShowWindow(hWnd, SW_SHOWNORMAL);
 	}
 	else
@@ -1020,7 +1079,29 @@ void CMainWindow::recreateSceneTextBitmap()
 	const float wrapWidth = static_cast<float>(rc.right - rc.left);
 
 	m_pSceneTextBitmap.Release();
-	drawTextOnBitmap(m_pD2TextWriter, m_formattedText.c_str(), m_formattedText.size(), &m_pSceneTextBitmap, wrapWidth);
+	drawTextOnBitmap(m_pSceneTextWriter, m_formattedText.c_str(), m_formattedText.size(), &m_pSceneTextBitmap, wrapWidth);
+}
+
+void CMainWindow::recreateHelpTextBitmap()
+{
+	static constexpr wchar_t s_helpText[] =
+	{
+		L"[H] Hide/show help\n"
+		L"[T] Hide/show scene text\n"
+		L"[C] Toggle text colour\n"
+		L"[Wheel] Scale up/down\n"
+		L"[L-drag] Move view-point\n"
+		L"[M-click] Reset scale and view-point\n"
+		L"[R-click] Show context menu to jump scene\n"
+		L"[R-pressed + M-click] Hide/show the border of window\n"
+		L"[R-pressed + L-click] Move borderless window\n"
+		L"[←|→; R-pressed + wheel] Rewind/fast-forward the scene text\n"
+		L"[↑|↓] Open the previous/next folder\n"
+	};
+	static constexpr size_t helpTextLength = sizeof(s_helpText) / sizeof(wchar_t) - 1;
+
+	m_pHelpTextBitmap.Release();
+	drawTextOnBitmap(m_pHelpTextWriter, s_helpText, helpTextLength, &m_pHelpTextBitmap);
 }
 
 void CMainWindow::drawTextOnBitmap(CD2TextWriter* pTextWriter, const wchar_t* text, size_t textLength, ID2D1Bitmap1** targetBitmap, float wrapWidth)

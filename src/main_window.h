@@ -109,7 +109,7 @@ private:
 	void updateScreen() const;
 
 	CD2ImageDrawer* m_pD2ImageDrawer = nullptr;
-	CD2TextWriter* m_pD2TextWriter = nullptr;
+	CD2TextWriter* m_pSceneTextWriter = nullptr;
 	CMfMediaPlayer m_audioPlayer;
 	CMfVideoTransferor m_videoTransferor;
 	CViewManager m_viewManager;
@@ -129,6 +129,7 @@ private:
 		bool hasFirstPaintDataBeenLoaded = false;
 		bool isTextHidden = false;
 		bool isImageSynced = true;
+		bool isHelpTextHidden = false;
 	};
 
 	SceneState m_sceneState;
@@ -137,7 +138,10 @@ private:
 	std::map<long long, CComPtr<ID2D1Bitmap>> m_storedVideoFrames;
 	std::map<std::wstring, CComPtr<ID2D1Bitmap>> m_imageMap;
 	std::wstring m_formattedText;
+
 	CComPtr<ID2D1Bitmap1> m_pSceneTextBitmap;
+	CD2TextWriter* m_pHelpTextWriter = nullptr;
+	CComPtr<ID2D1Bitmap1> m_pHelpTextBitmap;
 
 	bool isPlayReady() const;
 
@@ -160,6 +164,7 @@ private:
 	void clearImageMap();
 
 	void recreateSceneTextBitmap();
+	void recreateHelpTextBitmap();
 	void drawTextOnBitmap(CD2TextWriter* pTextWriter, const wchar_t* text, size_t textLength, ID2D1Bitmap1** targetBitmap, float wrapWidth = 0.f);
 
 	void onAudioPlayerEvent(unsigned long ulEvent, DWORD_PTR param1);
